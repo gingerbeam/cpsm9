@@ -12,7 +12,7 @@ bool isMatrixEqualIgnoreOrder(const std::vector<std::vector<int>>& matrix1, cons
 }
 
 TEST(LSSSTest, ParsePolicyTest1) {
-    ExpressionParser parser;
+    cpabe::ExpressionParser parser;
     std::string policy = "A and B and C";
     std::vector<std::vector<int>> matrix = parser.parse(policy);
     std::vector<std::vector<int>> expected = {
@@ -23,7 +23,7 @@ TEST(LSSSTest, ParsePolicyTest1) {
 }
 
 TEST(LSSSTest, ParsePolicyTest2) {
-    ExpressionParser parser;
+    cpabe::ExpressionParser parser;
     std::string policy = "A or (B and C or A)";
     std::vector<std::vector<int>> matrix = parser.parse(policy);
     std::vector<std::vector<int>> expected = {
@@ -35,7 +35,7 @@ TEST(LSSSTest, ParsePolicyTest2) {
 }
 
 TEST(LSSSTest, ConvertMatrixTest1) {
-    ExpressionParser parser;
+    cpabe::ExpressionParser parser;
     std::string policy = "A and B and C";
     std::vector<std::vector<int>> matrix = parser.parse(policy);
     std::pair<std::vector<std::vector<int>>, std::vector<std::string>> res = parser.convertToLSSS();
@@ -48,7 +48,7 @@ TEST(LSSSTest, ConvertMatrixTest1) {
 }
 
 TEST(LSSSTest, ConvertMatrixTest2) {
-    ExpressionParser parser;
+    cpabe::ExpressionParser parser;
     std::string policy = "A and B or C";
     std::vector<std::vector<int>> matrix = parser.parse(policy);
     std::pair<std::vector<std::vector<int>>, std::vector<std::string>> res = parser.convertToLSSS();
@@ -61,7 +61,7 @@ TEST(LSSSTest, ConvertMatrixTest2) {
 }
 
 TEST(LSSSTest, ConvertMatrixTest3) {
-    ExpressionParser parser;
+    cpabe::ExpressionParser parser;
     std::string policy = "A or (B and C or A)";
     std::vector<std::vector<int>> matrix = parser.parse(policy);
     std::pair<std::vector<std::vector<int>>, std::vector<std::string>> res = parser.convertToLSSS();
@@ -75,7 +75,7 @@ TEST(LSSSTest, ConvertMatrixTest3) {
 }
 
 TEST(LSSSTest, ReconstructTest1) {
-    ExpressionParser parser;
+    cpabe::ExpressionParser parser;
     std::string policy = "A or (B and C or A)";
     std::vector<std::vector<int>> matrix = parser.parse(policy);
     std::pair<std::vector<std::vector<int>>, std::vector<std::string>> res = parser.convertToLSSS();
@@ -85,7 +85,7 @@ TEST(LSSSTest, ReconstructTest1) {
 }
 
 TEST(LSSSTest, ReconstructTest2) {
-    ExpressionParser parser;
+    cpabe::ExpressionParser parser;
     std::string policy = "(A and B and C) and (D or E or F) and (G and H and (I or J or K or L))";
     std::vector<std::vector<int>> matrix = parser.parse(policy);
     std::pair<std::vector<std::vector<int>>, std::vector<std::string>> res = parser.convertToLSSS();
@@ -96,7 +96,7 @@ TEST(LSSSTest, ReconstructTest2) {
 }
 
 TEST(LSSSTest, ReconstructTest3) {
-    ExpressionParser parser;
+    cpabe::ExpressionParser parser;
     std::string policy = "A or (B and C or A) and D";
     std::vector<std::vector<int>> matrix = parser.parse(policy);
     std::pair<std::vector<std::vector<int>>, std::vector<std::string>> res = parser.convertToLSSS();

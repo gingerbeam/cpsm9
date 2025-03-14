@@ -1,5 +1,6 @@
 #include "utils/lsss.h"
 
+namespace cpabe {
 std::vector<std::string> tokenize(const std::string& input) {
     std::regex token_regex("(and|or|\\w+)");
     auto tokens_begin = std::sregex_iterator(input.begin(), input.end(), token_regex);
@@ -9,33 +10,6 @@ std::vector<std::string> tokenize(const std::string& input) {
         tokens.push_back(i->str());
     }
     return tokens;
-}
-
-std::vector<std::string> infix_to_postfix(const std::vector<std::string>& tokens) {
-    std::vector<std::string> postfix;
-    std::stack<std::string> op_stack;
-
-    for (const auto& token : tokens) {
-        if (token == "and" || token == "or") {
-            while (!op_stack.empty() && (
-                precedence[op_stack.top()] > precedence[token] ||
-                (precedence[op_stack.top()] == precedence[token] && associativity[token] == LEFT_ASSOC)
-            )) {
-                postfix.push_back(op_stack.top());
-                op_stack.pop();
-            }
-            op_stack.push(token);
-        } else {
-            postfix.push_back(token);
-        }
-    }
-
-    while (!op_stack.empty()) {
-        postfix.push_back(op_stack.top());
-        op_stack.pop();
-    }
-
-    return postfix;
 }
 
 void ExpressionParser::build_expression_tree(const std::vector<std::string>& postfix, std::unordered_map<std::string, int>& var_map) {
@@ -77,7 +51,29 @@ void ExpressionParser::build_expression_tree(const std::vector<std::string>& pos
 
 std::vector<std::vector<int>> ExpressionParser::parse(std::string input) {
     auto tokens = tokenize(input);
-    auto postfix = infix_to_postfix(tokens);
+    std::vector<std::string> postfix;
+    std::stack<std::string> op_stack;
+
+    for (const auto& token : tokens) {
+        if (token == "and" || token == "or") {
+            while (!op_stack.empty() && (
+                precedence[op_stack.top()] > precedence[token] ||
+                (precedence[op_stack.top()] == precedence[token] && associativity[token] == LEFT_ASSOC)
+            )) {
+                postfix.push_back(op_stack.top());
+                op_stack.pop();
+            }
+            op_stack.push(token);
+        } else {
+            postfix.push_back(token);
+        }
+    }
+
+    while (!op_stack.empty()) {
+        postfix.push_back(op_stack.top());
+        op_stack.pop();
+    }
+
     std::unordered_map<std::string, int> var_map;
     build_expression_tree(postfix, var_map);
     std::vector<std::vector<int>> res;
@@ -107,20 +103,20 @@ void generateVectors(int nodeIndex, std::vector<int> parentVector, int& c,
         if (node.right < 0) {
             matrix.push_back(parentVector);
             mapping.push_back(std::string(1, static_cast<char>('A' - 1 - node.right)));
-        } else { // 子节点递归处理
+        } else { // recursive call
             generateVectors(node.right, parentVector, c, matrix, mapping, nodes);
         }
     } else if (node.op_type == 0) { // AND gate
-        // 父向量扩展到长度c
+        // expand parent v to |c|
         while (parentVector.size() < static_cast<size_t>(c)) {
             parentVector.push_back(0);
         }
-        // 生成子向量
+        // child v
         std::vector<int> vec1 = parentVector;
         vec1.push_back(1);
         std::vector<int> vec0(c, 0);
         vec0.push_back(-1);
-        c++; // 递增c
+        c++; // counter increment
 
         // 处理子节点
         int child = node.left;
@@ -132,10 +128,10 @@ void generateVectors(int nodeIndex, std::vector<int> parentVector, int& c,
         }
 
         child = node.right;
-        if (child < 0) { // 叶子节点
+        if (child < 0) { // leaf node
             matrix.push_back(vec0);
             mapping.push_back(std::string(1, static_cast<char>('A' - 1 -child)));
-        } else { // 子节点递归处理
+        } else { // recursive call
             generateVectors(child, vec0, c, matrix, mapping, nodes);
         }
     }
@@ -171,7 +167,7 @@ std::pair<std::vector<std::vector<int>>, std::vector<std::string>> ExpressionPar
 void ExpressionParser::share(int secret) {
     std::vector<std::vector<int>>& matrix = M;
     int l = matrix.size(); // 矩阵的行数（即向量维度）
-    if (l == 0) return; // 处理空矩阵 [[7]]
+    if (l == 0) return; // 处理空矩阵
     int n = matrix[0].size(); // 矩阵的列数（结果向量的维度）
 
     std::vector<int> vec;
@@ -299,4 +295,6 @@ int ExpressionParser::reconstruct(std::vector<std::string> aSet) {
         res += omega[i] * lambda[row_mapping[i]];
     }
     return res;
+}
+
 }
