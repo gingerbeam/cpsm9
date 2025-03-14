@@ -1,6 +1,6 @@
 #include "utils/lsss.h"
 
-namespace cpabe {
+namespace utils {
 std::vector<std::string> tokenize(const std::string& input) {
     std::regex token_regex("(and|or|\\w+)");
     auto tokens_begin = std::sregex_iterator(input.begin(), input.end(), token_regex);
@@ -12,7 +12,33 @@ std::vector<std::string> tokenize(const std::string& input) {
     return tokens;
 }
 
-void ExpressionParser::build_expression_tree(const std::vector<std::string>& postfix, std::unordered_map<std::string, int>& var_map) {
+void LSSS::parse(std::string& input) {
+    auto tokens = tokenize(input);
+    std::vector<std::string> postfix;
+    std::stack<std::string> op_stack;
+
+    for (const auto& token : tokens) {
+        if (token == "and" || token == "or") {
+            while (!op_stack.empty() && (
+                precedence[op_stack.top()] > precedence[token] ||
+                (precedence[op_stack.top()] == precedence[token] && associativity[token] == 0)
+            )) {
+                postfix.push_back(op_stack.top());
+                op_stack.pop();
+            }
+            op_stack.push(token);
+        } else {
+            postfix.push_back(token);
+        }
+    }
+
+    while (!op_stack.empty()) {
+        postfix.push_back(op_stack.top());
+        op_stack.pop();
+    }
+
+    std::unordered_map<std::string, int> var_map;
+    // build expression tree
     std::stack<int> node_stack;
     std::vector<Node> nodes;
 
@@ -49,45 +75,7 @@ void ExpressionParser::build_expression_tree(const std::vector<std::string>& pos
     expression = nodes;
 }
 
-std::vector<std::vector<int>> ExpressionParser::parse(std::string input) {
-    auto tokens = tokenize(input);
-    std::vector<std::string> postfix;
-    std::stack<std::string> op_stack;
-
-    for (const auto& token : tokens) {
-        if (token == "and" || token == "or") {
-            while (!op_stack.empty() && (
-                precedence[op_stack.top()] > precedence[token] ||
-                (precedence[op_stack.top()] == precedence[token] && associativity[token] == LEFT_ASSOC)
-            )) {
-                postfix.push_back(op_stack.top());
-                op_stack.pop();
-            }
-            op_stack.push(token);
-        } else {
-            postfix.push_back(token);
-        }
-    }
-
-    while (!op_stack.empty()) {
-        postfix.push_back(op_stack.top());
-        op_stack.pop();
-    }
-
-    std::unordered_map<std::string, int> var_map;
-    build_expression_tree(postfix, var_map);
-    std::vector<std::vector<int>> res;
-    for (const auto& node : expression) {
-        std::vector<int> temp;
-        temp.push_back(node.op_type);
-        temp.push_back(node.left);
-        temp.push_back(node.right);
-        res.push_back(temp);
-    }
-    return res;
-}
-
-void generateVectors(int nodeIndex, std::vector<int> parentVector, int& c,
+void LSSS::generateVectors(int nodeIndex, std::vector<int> parentVector, int& c,
     std::vector<std::vector<int>>& matrix,
     std::vector<std::string>& mapping,
     const std::vector<Node>& nodes) {
@@ -137,7 +125,7 @@ void generateVectors(int nodeIndex, std::vector<int> parentVector, int& c,
     }
 }
 
-std::pair<std::vector<std::vector<int>>, std::vector<std::string>> ExpressionParser::convertToLSSS() {
+std::pair<std::vector<std::vector<int>>, std::vector<std::string>> LSSS::convertToLSSS() {
     const std::vector<Node> &nodes = expression;
     // 生成向量
     std::vector<std::vector<int>> matrix;
@@ -164,7 +152,16 @@ std::pair<std::vector<std::vector<int>>, std::vector<std::string>> ExpressionPar
     return {matrix, mapping};
 }
 
-void ExpressionParser::share(int secret) {
+LSSS::LSSS(std::string policy) {
+    this->parse(policy);
+    std::pair<std::vector<std::vector<int>>, std::vector<std::string>> lsss = convertToLSSS();
+}
+
+LSSS::~LSSS() {
+
+}
+
+void LSSS::share(int secret) {
     std::vector<std::vector<int>>& matrix = M;
     int l = matrix.size(); // 矩阵的行数（即向量维度）
     if (l == 0) return; // 处理空矩阵
@@ -183,8 +180,6 @@ void ExpressionParser::share(int secret) {
             result[j] += vec[i] * matrix[j][i];
         }
     }
-    
-    // return result;
     lambda = result;
 }
 
@@ -266,11 +261,11 @@ std::vector<int> compute_omega(const std::vector<std::vector<int>>& mat) {
     return result;
 }
 
-int ExpressionParser::reconstruct(std::vector<std::string> aSet) {
+int LSSS::reconstruct(std::vector<std::string> aSet) {
     std::vector<int> S; // 存储匹配的行号
     std::unordered_map<int, int> row_mapping; // 小矩阵行号与原始行号的映射
 
-    // 1. 匹配属性集合，找到 rho(i) 在 aSet 中出现的行号
+    // 匹配属性集合，找到 rho(i) 在 aSet 中出现的行号
     for (size_t i = 0; i < rho.size(); ++i) {
         if (std::find(aSet.begin(), aSet.end(), rho[i]) != aSet.end()) {
             S.push_back(i);
@@ -279,17 +274,18 @@ int ExpressionParser::reconstruct(std::vector<std::string> aSet) {
     }
 
     if (S.empty()) {
-        // 如果没有匹配的行，返回空向量
         return {};
     }
 
-    // 2. 构造小矩阵 mat
+    // 提取 S 中对应的行组成小矩阵 mat
     std::vector<std::vector<int>> mat(S.size(), std::vector<int>(M[0].size(), 0));
     for (size_t i = 0; i < S.size(); ++i) {
         mat[i] = M[S[i]]; // 提取对应的行
     }
 
     std::vector<int> omega = compute_omega(mat);
+
+    // inner product
     int res = 0;
     for (int i = 0; i < S.size(); ++i) {
         res += omega[i] * lambda[row_mapping[i]];
