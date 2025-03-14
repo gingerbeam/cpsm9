@@ -11,19 +11,47 @@ bool isMatrixEqualIgnoreOrder(const std::vector<std::vector<int>>& matrix1, cons
     return sorted1 == sorted2;
 }
 
-TEST(LSSSTest, ConvertMatrixTest) {
+TEST(LSSSTest, ReconstructTest1) {
     std::string policy = "(A and B and C) and (D or E or F) and (G and H and (I or J or K or L))";
     utils::LSSS parser(policy);
-    parser.share(42);
-    int res_s = parser.reconstruct(std::vector<std::string>{"A", "B", "C", "D", "G", "H", "I"});
+    // std::cout << "LSSS Matrix: \n";
+    // parser.printMatrix();
+    // std::cout << "LSSS Rho: \n";
+    // parser.printRho();
+    int *shares;
+    parser.share(42, &shares);
+    int res_s = parser.reconstruct(std::vector<std::string>{"A", "B", "C", "D", "G", "H", "I"}, shares);
     EXPECT_EQ(res_s, 42);
 }
 
-TEST(LSSSTest, ReconstructTest) {
-    std::string policy = "A or (B and C or A)";
+TEST(LSSSTest, ReconstructTest2) {
+    std::string policy = "(A or B) and (C and D and (E or F)) and (G or H or (I and J))";
     utils::LSSS parser(policy);
-    parser.share(42);
-    int res_s = parser.reconstruct(std::vector<std::string>{"A", "B", "C"});
+    // std::cout << "LSSS Expression: \n";
+    // parser.printExpression();
+    // std::cout << "LSSS Matrix: \n";
+    // parser.printMatrix();
+    // std::cout << "LSSS Rho: \n";
+    // parser.printRho();
+    int *shares;
+    parser.share(42, &shares);
+    int res_s = parser.reconstruct(std::vector<std::string>{"A", "C", "D", "E", "G"}, shares);
+    EXPECT_EQ(res_s, 42);
+}
+
+// TODO: priority of boolean operators
+TEST(LSSSTest, ReconstructTest3) {
+    std::string policy = "A or B and C and D and E or F and G or H or I and J";
+    utils::LSSS parser(policy);
+    // std::cout << "LSSS Expression: \n";
+    // parser.printExpression();
+    // std::cout << "LSSS Matrix: \n";
+    // parser.printMatrix();
+    // std::cout << "LSSS Rho: \n";
+    // parser.printRho();
+    int *shares;
+    parser.share(42, &shares);
+    int res_s = parser.reconstruct(std::vector<std::string>{"A"}, shares);
     EXPECT_EQ(res_s, 42);
 }
 

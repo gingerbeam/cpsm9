@@ -2,36 +2,74 @@
 
 namespace utils {
 std::vector<std::string> tokenize(const std::string& input) {
-    std::regex token_regex("(and|or|\\w+)");
-    auto tokens_begin = std::sregex_iterator(input.begin(), input.end(), token_regex);
-    auto tokens_end = std::sregex_iterator();
+    // std::regex token_regex("(and|or|\\w+)");
+    // auto tokens_begin = std::sregex_iterator(input.begin(), input.end(), token_regex);
+    // auto tokens_end = std::sregex_iterator();
+    // std::vector<std::string> tokens;
+    // for (std::sregex_iterator i = tokens_begin; i != tokens_end; ++i) {
+    //     tokens.push_back(i->str());
+    // }
+    // return tokens;
     std::vector<std::string> tokens;
-    for (std::sregex_iterator i = tokens_begin; i != tokens_end; ++i) {
-        tokens.push_back(i->str());
+    int n = input.size();
+    for (int i = 0; i < n; ) {
+        while (i < n && isspace(input[i])) i++;
+        if (i >= n) break;
+        
+        if (input[i] == '(' || input[i] == ')') {
+            tokens.push_back(std::string(1, input[i++]));
+        } else if (i + 3 <= n && input.substr(i, 3) == "and") {
+            tokens.push_back("and");
+            i += 3;
+        } else if (i + 2 <= n && input.substr(i, 2) == "or") {
+            tokens.push_back("or");
+            i += 2;
+        } else {
+            // 处理单个字符的操作数（如A/B/C等）
+            // TODO: 处理更多操作数，例如字符串
+            tokens.push_back(std::string(1, input[i++]));
+        }
     }
     return tokens;
 }
 
 void LSSS::parse(std::string& input) {
     auto tokens = tokenize(input);
+
     std::vector<std::string> postfix;
     std::stack<std::string> op_stack;
 
+    std::unordered_map<std::string, int> precedence = {{"and", 2}, {"or", 1}};
+    std::unordered_map<std::string, int> associativity = {{"and", 1}, {"or", 1}};
+
     for (const auto& token : tokens) {
         if (token == "and" || token == "or") {
-            while (!op_stack.empty() && (
-                precedence[op_stack.top()] > precedence[token] ||
-                (precedence[op_stack.top()] == precedence[token] && associativity[token] == 0)
-            )) {
+            while (!op_stack.empty() && op_stack.top() != "(" &&
+                (precedence[op_stack.top()] > precedence[token] ||
+                (precedence[op_stack.top()] == precedence[token] && associativity[token] == 0))) {
                 postfix.push_back(op_stack.top());
                 op_stack.pop();
             }
             op_stack.push(token);
+        } else if (token == "(") {
+            // 左括号直接入栈
+            op_stack.push(token);
+        } else if (token == ")") {
+            // 遇到右括号，弹出操作符直到左括号
+            while (!op_stack.empty() && op_stack.top() != "(") {
+                postfix.push_back(op_stack.top());
+                op_stack.pop();
+            }
+            if (!op_stack.empty() && op_stack.top() == "(") {
+                op_stack.pop(); // 弹出左括号
+            }
         } else {
+            // 操作数直接加入后缀表达式
             postfix.push_back(token);
         }
     }
 
+    // 将剩余的操作符加入后缀表达式
     while (!op_stack.empty()) {
         postfix.push_back(op_stack.top());
         op_stack.pop();
@@ -71,28 +109,28 @@ void LSSS::parse(std::string& input) {
     }
     std::reverse(nodes.begin(), nodes.end());
 
-    // return nodes;
+    // tree expression
     expression = nodes;
 }
 
-void LSSS::generateVectors(int nodeIndex, std::vector<int> parentVector, int& c,
+void LSSS::generateVectors(int nodeIndex, std::vector<int> parentVector, int c,
     std::vector<std::vector<int>>& matrix,
     std::vector<std::string>& mapping,
-    const std::vector<Node>& nodes) {
-    const Node& node = nodes[nodeIndex];
+    const std::vector<Node>& exprtree) {
+    const Node& node = exprtree[nodeIndex];
 
     if (node.op_type == 1) { // OR gate
-        if (node.left < 0) { // leaf node
+        if (node.left < 0) { // leaf node & attribute
             matrix.push_back(parentVector);
             mapping.push_back(std::string(1, static_cast<char>('A' - 1 - node.left)));
         } else {
-            generateVectors(node.left, parentVector, c, matrix, mapping, nodes);
+            generateVectors(node.left, parentVector, c, matrix, mapping, exprtree);
         }
         if (node.right < 0) {
             matrix.push_back(parentVector);
             mapping.push_back(std::string(1, static_cast<char>('A' - 1 - node.right)));
         } else { // recursive call
-            generateVectors(node.right, parentVector, c, matrix, mapping, nodes);
+            generateVectors(node.right, parentVector, c, matrix, mapping, exprtree);
         }
     } else if (node.op_type == 0) { // AND gate
         // expand parent v to |c|
@@ -104,23 +142,19 @@ void LSSS::generateVectors(int nodeIndex, std::vector<int> parentVector, int& c,
         vec1.push_back(1);
         std::vector<int> vec0(c, 0);
         vec0.push_back(-1);
-        c++; // counter increment
+        int nctr = c + 1; // counter increment
 
-        // 处理子节点
-        int child = node.left;
-        if (child < 0) { // 叶子节点
+        if (node.left < 0) {
             matrix.push_back(vec1);
-            mapping.push_back(std::string(1, static_cast<char>('A' - 1 -child)));
+            mapping.push_back(std::string(1, static_cast<char>('A' - 1 -node.left)));
         } else { // 子节点递归处理
-            generateVectors(child, vec1, c, matrix, mapping, nodes);
+            generateVectors(node.left, vec1, nctr, matrix, mapping, exprtree);
         }
-
-        child = node.right;
-        if (child < 0) { // leaf node
+        if (node.right < 0) {
             matrix.push_back(vec0);
-            mapping.push_back(std::string(1, static_cast<char>('A' - 1 -child)));
+            mapping.push_back(std::string(1, static_cast<char>('A' - 1 -node.right)));
         } else { // recursive call
-            generateVectors(child, vec0, c, matrix, mapping, nodes);
+            generateVectors(node.right, vec0, nctr, matrix, mapping, exprtree);
         }
     }
 }
@@ -161,7 +195,7 @@ LSSS::~LSSS() {
 
 }
 
-void LSSS::share(int secret) {
+void LSSS::share(int secret, int** shares) {
     std::vector<std::vector<int>>& matrix = M;
     int l = matrix.size(); // 矩阵的行数（即向量维度）
     if (l == 0) return; // 处理空矩阵
@@ -174,83 +208,119 @@ void LSSS::share(int secret) {
     }
 
     std::vector<int> result(l, 0); // 初始化结果向量 [[8]]
-    
-    for (int j = 0; j < l; ++j) {
-        for (int i = 0; i < n; ++i) {
-            result[j] += vec[i] * matrix[j][i];
+
+    *shares = new int[l];
+    // std::cout << "DEBUG - shares: ";
+    memset(*shares, 0, l * sizeof(int));
+    for (int i = 0; i < l; ++i) {
+        for (int j = 0; j < n; ++j) {
+            (*shares)[i] += vec[j] * matrix[i][j];
+        }
+        // std::cout << (*shares)[i] << " ";
+    }
+    // std::cout << std::endl;
+}
+
+std::vector<double> find_special_solution(const std::vector<std::vector<int>>& mat) {
+    int m = mat.size();
+    if (m == 0) return std::vector<double>();
+    int n = mat[0].size();
+
+    std::vector<std::vector<double>> aug(m, std::vector<double>(n + 1));
+    for (int i = 0; i < m; ++i) {
+        for (int j = 0; j < n; ++j) {
+            aug[i][j] = mat[i][j];
+        }
+        aug[i][n] = (i == 0) ? 1.0 : 0.0;
+    }
+
+    int rank = 0;
+    std::vector<int> pivot_cols(m, -1); // 记录主元列的列号
+
+    for (int col = 0; col < n && rank < m; ++col) {
+        // 寻找主元行
+        int pivot_row = rank;
+        for (int row = rank + 1; row < m; ++row) {
+            if (abs(aug[row][col]) > abs(aug[pivot_row][col])) {
+                pivot_row = row;
+            }
+        }
+
+        if (abs(aug[pivot_row][col]) < 1e-9) {
+            continue; // 当前列无法选主元，跳过
+        }
+
+        // 交换主元行
+        swap(aug[rank], aug[pivot_row]);
+
+        // 归一化主元行
+        double pivot_val = aug[rank][col];
+        for (int j = col; j <= n; ++j) {
+            aug[rank][j] /= pivot_val;
+        }
+
+        // 消去其他行的当前列
+        for (int row = 0; row < m; ++row) {
+            if (row != rank) {
+                double factor = aug[row][col];
+                for (int j = col; j <= n; ++j) {
+                    aug[row][j] -= factor * aug[rank][j];
+                }
+            }
+        }
+
+        // 记录主元列
+        pivot_cols[rank] = col;
+        rank++;
+    }
+
+    // 检查是否有矛盾
+    for (int row = rank; row < m; ++row) {
+        if (abs(aug[row][n]) > 1e-9) {
+            return std::vector<double>(); // 无解，返回空
         }
     }
-    lambda = result;
+
+    // 构造解向量
+    std::vector<double> x(n, 0.0);
+
+    // 逆序处理主元行
+    for (int row = rank - 1; row >= 0; --row) {
+        int col = pivot_cols[row];
+        double val = aug[row][n];
+        // 减去后面的变量的贡献
+        for (int j = col + 1; j < n; ++j) {
+            val -= aug[row][j] * x[j];
+        }
+        x[col] = val;
+    }
+
+    return x;
 }
 
 std::vector<int> compute_omega(const std::vector<std::vector<int>>& mat) {
     int l = mat.size();
+    // std::cout << "DEBUG - l: " << l << std::endl;
     if (l == 0) {
         throw std::invalid_argument("Matrix has zero rows.");
     }
     int n = mat[0].size();
+    // std::cout << "DEBUG - n: " << n << std::endl;
     if (n == 0) {
         throw std::invalid_argument("Matrix has zero columns.");
     }
-    if (n > l) {
-        throw std::runtime_error("The number of equations exceeds the number of variables, no solution exists.");
-    }
+    // if (n > l) {
+    //     throw std::runtime_error("The number of equations exceeds the number of variables, no solution exists.");
+    // }
 
-    // 构造系数矩阵 M (n行 l列)
-    std::vector<std::vector<double>> M(n, std::vector<double>(l, 0.0));
+    // tranpose
+    std::vector<std::vector<int>> tmat(n, std::vector<int>(l, 0));
     for (int i = 0; i < n; ++i) {
         for (int k = 0; k < l; ++k) {
-            M[i][k] = mat[k][i];
+            tmat[i][k] = mat[k][i];
         }
     }
-
-    // 构造右侧向量 b
-    std::vector<double> b(n, 0.0);
-    b[0] = 1.0;
-
-    // 构造增广矩阵
-    std::vector<std::vector<double>> augmented(n, std::vector<double>(l + 1, 0.0));
-    for (int i = 0; i < n; ++i) {
-        for (int k = 0; k < l; ++k) {
-            augmented[i][k] = M[i][k];
-        }
-        augmented[i][l] = b[i];
-    }
-
-    // 高斯消元法
-    for (int col = 0; col < n; ++col) {
-        // 寻找主元
-        int pivot = col;
-        for (int row = col + 1; row < n; ++row) {
-            if (std::abs(augmented[row][col]) > std::abs(augmented[pivot][col])) {
-                pivot = row;
-            }
-        }
-        std::swap(augmented[col], augmented[pivot]);
-
-        // 主元为零，无解
-        if (std::abs(augmented[col][col]) < 1e-9) {
-            throw std::runtime_error("The system is singular, no solution exists.");
-        }
-
-        // 消元
-        for (int row = col + 1; row < n; ++row) {
-            double factor = augmented[row][col] / augmented[col][col];
-            for (int c = col; c <= l; ++c) {
-                augmented[row][c] -= factor * augmented[col][c];
-            }
-        }
-    }
-
-    // 回代求解
-    std::vector<double> omega(l, 0.0);
-    for (int row = n - 1; row >= 0; --row) {
-        omega[row] = augmented[row][l];
-        for (int c = row + 1; c < l; ++c) {
-            omega[row] -= augmented[row][c] * omega[c];
-        }
-        omega[row] /= augmented[row][row];
-    }
+    std::vector<double> omega = find_special_solution(tmat);
 
     // 转换为整数（四舍五入）
     std::vector<int> result(l);
@@ -261,7 +331,7 @@ std::vector<int> compute_omega(const std::vector<std::vector<int>>& mat) {
     return result;
 }
 
-int LSSS::reconstruct(std::vector<std::string> aSet) {
+int LSSS::reconstruct(std::vector<std::string> aSet, int *shares) {
     std::vector<int> S; // 存储匹配的行号
     std::unordered_map<int, int> row_mapping; // 小矩阵行号与原始行号的映射
 
@@ -288,7 +358,7 @@ int LSSS::reconstruct(std::vector<std::string> aSet) {
     // inner product
     int res = 0;
     for (int i = 0; i < S.size(); ++i) {
-        res += omega[i] * lambda[row_mapping[i]];
+        res += omega[i] * shares[row_mapping[i]];
     }
     return res;
 }
