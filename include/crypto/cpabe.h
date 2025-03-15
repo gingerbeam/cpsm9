@@ -4,26 +4,33 @@
 #include <pbc/pbc.h>
 #include <memory>
 
+#include "utils/lsss.h"
+
 namespace crypto {
 
 class pp{
-
+    int len;
+    element_t* pplist;
 };
 
 class msk{
-
+    int len;
+    element_t* msklist;
 };
 
 class skey{
-
+    int len;
+    element_t* sklist;
 };
 
 class plaintext{
-
+    int len;
+    element_t* ptxlist;
 };
 
 class ciphertext{
-
+    int len;
+    element_t* ctxlist;
 };
 
 class cpabe {
