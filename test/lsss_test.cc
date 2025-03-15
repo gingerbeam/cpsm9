@@ -55,6 +55,15 @@ TEST(LSSSTest, ReconstructTest3) {
     EXPECT_EQ(res_s, 42);
 }
 
+TEST(LSSSTest, ArbitraryAttributeTest) {
+    std::string policy = "A and BB and (CCC or DDDD)";
+    utils::LSSS parser(policy);
+    int *shares;
+    parser.share(42, &shares);
+    int res_s = parser.reconstruct(std::vector<std::string>{"A", "BB", "CCC"}, shares);
+    EXPECT_EQ(res_s, 42);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

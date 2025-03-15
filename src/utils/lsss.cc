@@ -27,13 +27,18 @@ std::vector<std::string> tokenize(const std::string& input) {
         } else {
             // 处理单个字符的操作数（如A/B/C等）
             // TODO: 处理更多操作数，例如字符串
-            tokens.push_back(std::string(1, input[i++]));
+            // tokens.push_back(std::string(1, input[i++]));
+            std::string token;
+            while (i < n && isalpha(input[i])) {
+                token += input[i++];
+            }
+            tokens.push_back(token);
         }
     }
     return tokens;
 }
 
-void LSSS::parse(std::string& input) {
+std::unordered_map<int, std::string> LSSS::parse(std::string& input) {
     auto tokens = tokenize(input);
 
     std::vector<std::string> postfix;
@@ -76,8 +81,10 @@ void LSSS::parse(std::string& input) {
     }
 
     std::unordered_map<std::string, int> var_map;
+    std::unordered_map<int, std::string> attr_map;
     // build expression tree
     std::stack<int> node_stack;
+    std::stack<std::string> str_node_stack;
     std::vector<Node> nodes;
 
     for (const auto& token : postfix) {
@@ -91,9 +98,10 @@ void LSSS::parse(std::string& input) {
             nodes.push_back({op_type, left, right});
             node_stack.push(index);
         } else {
-            if (var_map.find(token) == var_map.end()) {
-                var_map[token] = -static_cast<int>(var_map.size()) - 1;
-            }
+            if (var_map.find(token) == var_map.end()) { // 映射不存在，创建映射
+                var_map[token] = -static_cast<int>(var_map.size()) - 1; // 将属性值映射为负数
+                attr_map[var_map[token]] = token;
+            } // 否则 var_map[token] 为节点中的映射值
             node_stack.push(var_map[token]);
         }
     }
@@ -111,26 +119,28 @@ void LSSS::parse(std::string& input) {
 
     // tree expression
     expression = nodes;
+    return attr_map;
 }
 
 void LSSS::generateVectors(int nodeIndex, std::vector<int> parentVector, int c,
     std::vector<std::vector<int>>& matrix,
     std::vector<std::string>& mapping,
-    const std::vector<Node>& exprtree) {
-    const Node& node = exprtree[nodeIndex];
+    const std::vector<LSSS::Node>& exprtree,
+    const std::unordered_map<int, std::string>& attr_map) {
+    const LSSS::Node& node = exprtree[nodeIndex];
 
     if (node.op_type == 1) { // OR gate
         if (node.left < 0) { // leaf node & attribute
             matrix.push_back(parentVector);
-            mapping.push_back(std::string(1, static_cast<char>('A' - 1 - node.left)));
+            mapping.push_back(attr_map.at(node.left)); // 修改：使用 at() 方法
         } else {
-            generateVectors(node.left, parentVector, c, matrix, mapping, exprtree);
+            generateVectors(node.left, parentVector, c, matrix, mapping, exprtree, attr_map);
         }
         if (node.right < 0) {
             matrix.push_back(parentVector);
-            mapping.push_back(std::string(1, static_cast<char>('A' - 1 - node.right)));
+            mapping.push_back(attr_map.at(node.right)); // 修改：使用 at() 方法
         } else { // recursive call
-            generateVectors(node.right, parentVector, c, matrix, mapping, exprtree);
+            generateVectors(node.right, parentVector, c, matrix, mapping, exprtree, attr_map);
         }
     } else if (node.op_type == 0) { // AND gate
         // expand parent v to |c|
@@ -146,26 +156,26 @@ void LSSS::generateVectors(int nodeIndex, std::vector<int> parentVector, int c,
 
         if (node.left < 0) {
             matrix.push_back(vec1);
-            mapping.push_back(std::string(1, static_cast<char>('A' - 1 -node.left)));
+            mapping.push_back(attr_map.at(node.left)); // 修改：使用 at() 方法
         } else { // 子节点递归处理
-            generateVectors(node.left, vec1, nctr, matrix, mapping, exprtree);
+            generateVectors(node.left, vec1, nctr, matrix, mapping, exprtree, attr_map);
         }
         if (node.right < 0) {
             matrix.push_back(vec0);
-            mapping.push_back(std::string(1, static_cast<char>('A' - 1 -node.right)));
+            mapping.push_back(attr_map.at(node.right)); // 修改：使用 at() 方法
         } else { // recursive call
-            generateVectors(node.right, vec0, nctr, matrix, mapping, exprtree);
+            generateVectors(node.right, vec0, nctr, matrix, mapping, exprtree, attr_map);
         }
     }
 }
 
-std::pair<std::vector<std::vector<int>>, std::vector<std::string>> LSSS::convertToLSSS() {
+std::pair<std::vector<std::vector<int>>, std::vector<std::string>> LSSS::convertToLSSS(const std::unordered_map<int, std::string>& attr_map) {
     const std::vector<Node> &nodes = expression;
     // 生成向量
     std::vector<std::vector<int>> matrix;
     std::vector<std::string> mapping;
     int c = 1;
-    generateVectors(0, {1}, c, matrix, mapping, nodes);
+    generateVectors(0, {1}, c, matrix, mapping, nodes, attr_map);
 
     // 填充向量到最大长度
     size_t maxLen = 0;
@@ -187,8 +197,8 @@ std::pair<std::vector<std::vector<int>>, std::vector<std::string>> LSSS::convert
 }
 
 LSSS::LSSS(std::string policy) {
-    this->parse(policy);
-    std::pair<std::vector<std::vector<int>>, std::vector<std::string>> lsss = convertToLSSS();
+    std::unordered_map<int, std::string> attr_map = this->parse(policy);
+    std::pair<std::vector<std::vector<int>>, std::vector<std::string>> lsss = convertToLSSS(attr_map);
 }
 
 LSSS::~LSSS() {

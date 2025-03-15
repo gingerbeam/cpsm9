@@ -26,10 +26,10 @@ private:
     std::vector<std::string> rho;
 
     // parse expression string to expression tree
-    void parse(std::string& input);
+    std::unordered_map<int, std::string> parse(std::string& input);
     // convert expression tree to LSSS policies
-    std::pair<std::vector<std::vector<int>>, std::vector<std::string>> convertToLSSS();
-    void generateVectors(int nodeIndex, std::vector<int> parentVector, int c, std::vector<std::vector<int>>& matrix, std::vector<std::string>& mapping, const std::vector<Node>& nodes);
+    std::pair<std::vector<std::vector<int>>, std::vector<std::string>> convertToLSSS(const std::unordered_map<int, std::string>& attr_map);
+    void generateVectors(int nodeIndex, std::vector<int> parentVector, int c, std::vector<std::vector<int>>& matrix, std::vector<std::string>& mapping, const std::vector<Node>& nodes, const std::unordered_map<int, std::string>& attr_map);
 
 public:
     LSSS(std::string policy);
