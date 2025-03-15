@@ -35,6 +35,9 @@ public:
     LSSS(std::string policy);
     ~LSSS();
 
+    // TODO: 实现对element_t的分享
+    // TODO: 处理attribute作为element_t参与运算的情况（但是实际的属性还是string类型）
+    // rho记录行号到属性string的映射，可以维护一个属性string到element_t的单独映射
     void share(int secret, int **shares);
     int reconstruct(std::vector<std::string> aSet, int* shares);
 
