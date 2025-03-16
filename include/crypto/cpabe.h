@@ -3,56 +3,45 @@
 
 #include <pbc/pbc.h>
 #include <memory>
+#include <vector>
+#include <string>
 
 #include "utils/lsss.h"
 
 namespace crypto {
 
-class pp{
-    int len;
-    element_t* pplist;
+struct plaintext {
+    element_t *message;
 };
 
-class msk{
+struct ciphertext {
     int len;
-    element_t* msklist;
-};
-
-class skey{
-    int len;
-    element_t* sklist;
-};
-
-class plaintext{
-    int len;
-    element_t* ptxlist;
-};
-
-class ciphertext{
-    int len;
-    element_t* ctxlist;
+    element_t *c;
 };
 
 class cpabe {
+protected:
+    pairing_t pairing;
+
 public:
+    cpabe(std::string &param) {
+        pbc_param_t par;
+        pbc_param_init_set_str(par, param.c_str());
+        pairing_init_pbc_param(pairing, par);
+    }
+
     virtual ~cpabe() = default;
 
-    // 原型模式核心方法
-    virtual std::unique_ptr<cpabe> clone() const = 0;
-
-    // 算法接口
+    // base methods
     virtual void Setup() = 0;
-    virtual void Keygen() = 0;
-    virtual void Encrypt(const std::string& ptx) = 0;
-    virtual std::string Decrypt(const std::string& ctx) = 0;
+    virtual void Keygen(std::vector<std::string> attrs) = 0;
+    virtual void Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) = 0;
+    virtual std::string Decrypt(ciphertext ctx) = 0;
 
-protected:
-    // 保护拷贝构造函数以实现正确克隆
-    cpabe() = default;
-    cpabe(const cpabe&) = default;
-    cpabe& operator=(const cpabe&) = default;
+    // getter
+    pairing_t* getpairing() {return &pairing;}
 };
 
-} // namespace crypto
+}
 
 #endif // CRYPTO_INTERFACE_HPP
