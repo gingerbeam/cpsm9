@@ -231,6 +231,33 @@ void LSSS::share(int secret, int** shares) {
     // std::cout << std::endl;
 }
 
+// void LSSS::share(element_t secret, element_t **shares) {
+//     std::vector<std::vector<int>>& matrix = M;
+//     int l = matrix.size(); // 矩阵的行数（即向量维度）
+//     if (l == 0) return; // 处理空矩阵
+//     int n = matrix[0].size(); // 矩阵的列数（结果向量的维度）
+
+//     std::vector<int> vec;
+//     vec.push_back(secret);
+//     for (int i = 1; i < n; ++i) {
+//         vec.push_back(rand() % 100); // 需先调用srand初始化种子
+//     }
+
+//     std::vector<int> result(l, 0); // 初始化结果向量 [[8]]
+
+//     *shares = new element_t[l];
+//     memset(*shares, 0, l * sizeof(int));
+//     for (int i = 0; i < l; ++i) {
+//         for (int j = 0; j < n; ++j) {
+//             element_t temp;
+//             element_init_Zr(temp, pairing);
+//             int temp = vec[j] * matrix[i][j];
+            
+//             // (*shares)[i] += vec[j] * matrix[i][j];
+//         }
+//     }
+// }
+
 std::vector<double> find_special_solution(const std::vector<std::vector<int>>& mat) {
     int m = mat.size();
     if (m == 0) return std::vector<double>();
@@ -371,6 +398,34 @@ int LSSS::reconstruct(std::vector<std::string> aSet, int *shares) {
         res += omega[i] * shares[row_mapping[i]];
     }
     return res;
+}
+
+std::unordered_map<int, int> LSSS::retriveOmega(std::vector<std::string> aSet) {
+    std::vector<int> S; // 存储匹配的行号
+    std::unordered_map<int, int> row_mapping;
+    
+    for (size_t i = 0; i < rho.size(); ++i) {
+        if (std::find(aSet.begin(), aSet.end(), rho[i]) != aSet.end()) {
+            S.push_back(i);
+            row_mapping[S.size() - 1] = i;
+        }
+    }
+
+    if (S.empty()) {
+        return {};
+    }
+
+    std::vector<std::vector<int>> mat(S.size(), std::vector<int>(M[0].size(), 0));
+    for (size_t i = 0; i < S.size(); ++i) {
+        mat[i] = M[S[i]];
+    }
+
+    std::unordered_map<int, int> omega;
+    std::vector<int> omega_v = compute_omega(mat);
+    for (int i = 0; i < omega_v.size(); ++i) {
+        omega[row_mapping[i]] = omega_v[i];
+    }
+    return omega;
 }
 
 }

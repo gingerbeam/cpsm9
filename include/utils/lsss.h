@@ -9,6 +9,9 @@
 #include <regex>
 #include <algorithm>
 #include <cmath>
+#include <random>
+
+#include <pbc/pbc.h>
 
 namespace utils {
 
@@ -39,7 +42,13 @@ public:
     // TODO: 处理attribute作为element_t参与运算的情况（但是实际的属性还是string类型）
     // rho记录行号到属性string的映射，可以维护一个属性string到element_t的单独映射
     void share(int secret, int **shares);
+    // void share(element_t secret, element_t **shares);
     int reconstruct(std::vector<std::string> aSet, int* shares);
+    std::unordered_map<int, int> retriveOmega(std::vector<std::string> aSet);
+    // element_t* reconstruct(std::vector<std::string> aSet, element_t* shares);
+
+    int getl() { return M.size(); }
+    int getn() { return M[0].size(); }
 
     void printMatrix() {
         for (int i = 0; i < M.size(); i++) {
