@@ -45,6 +45,7 @@ void w11::Keygen(std::vector<std::string> attrs) {
 void w11::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
     std::cout << "Waters11: Encrypt.\n";
     utils::LSSS lsss(policy);
+    ctx->lsss_policy = &lsss;
     // element_t s;
     // element_init_Zr(s, pairing);
     std::mt19937 gen(std::random_device{}());
@@ -95,9 +96,20 @@ void w11::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
     for (int i = 2; i < l + 2; ++i) element_set((ctx->c)[i], ci[i - 2]);
 }
 
-std::string w11::Decrypt(ciphertext ctx) {
-    std::cout << "Waters11: Decrypt.\n";
-    return "Waters11: Decrypt.\n";
+std::string w11::Decrypt(ciphertext *ctx, std::vector<std::string> attrs, secretkey *sk) {
+    auto omega = (ctx->lsss_policy)->retriveOmega(attrs);
+    element_t temp1;
+    element_init_GT(temp1, pairing);
+    pairing_apply(temp1, (ctx->c)[1], (sk->k)[0], pairing);
+    element_t temp2;
+    element_init_GT(temp2, pairing);
+    element_set1(temp2);
+    // ctx可以通过下标映射到属性
+    // 但是已知属性值如何和KeyGen中生成的密钥对应起来？
+    // -> KeyGen需要一个属性映射到下标的映射
+    // for (int i = 0; i < (sk->len) - 2; ++i) {
+
+    // }
 }
 
 } // namespace crypto

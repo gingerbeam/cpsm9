@@ -34,7 +34,9 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(w11_test
         test/w11_test.cc
-        src/crypto/w11.cc)
+        src/crypto/w11.cc
+        src/utils/lsss.cc
+        src/curve/params.cc)
         
 target_link_libraries(w11_test gtest pbc OpenSSL::SSL
         "/lib/x86_64-linux-gnu/libgmpxx.a"
@@ -58,6 +60,7 @@ target_link_libraries(w11_test gtest pbc OpenSSL::SSL
 
 add_executable(lsss_test
         test/lsss_test.cc
-        src/utils/lsss.cc)
+        src/utils/lsss.cc
+        src/curve/params.cc)
 
 target_link_libraries(lsss_test gtest Eigen3::Eigen)

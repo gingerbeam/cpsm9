@@ -28,7 +28,7 @@ public:
 
     void Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) override;
 
-    std::string Decrypt(ciphertext ctx) override;
+    std::string Decrypt(ciphertext *ctx, std::vector<std::string> attrs, secretkey *sk) override;
 };
 
 } // namespace crypto

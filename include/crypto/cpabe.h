@@ -15,8 +15,14 @@ struct plaintext {
 };
 
 struct ciphertext {
+    utils::LSSS *lsss_policy;
     int len;
     element_t *c;
+};
+
+struct secretkey {
+    int len;
+    element_t *k;
 };
 
 class cpabe {
@@ -36,7 +42,7 @@ public:
     virtual void Setup() = 0;
     virtual void Keygen(std::vector<std::string> attrs) = 0;
     virtual void Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) = 0;
-    virtual std::string Decrypt(ciphertext ctx) = 0;
+    virtual std::string Decrypt(ciphertext *ctx, std::vector<std::string> attrs, secretkey *sk) = 0;
 
     // getter
     pairing_t* getpairing() {return &pairing;}
