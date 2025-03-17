@@ -63,4 +63,4 @@ add_executable(lsss_test
         src/utils/lsss.cc
         src/curve/params.cc)
 
-target_link_libraries(lsss_test gtest Eigen3::Eigen)
+target_link_libraries(lsss_test gtest pbc Eigen3::Eigen)

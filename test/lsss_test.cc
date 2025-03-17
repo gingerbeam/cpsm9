@@ -2,69 +2,129 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
-bool isMatrixEqualIgnoreOrder(const std::vector<std::vector<int>>& matrix1, const std::vector<std::vector<int>>& matrix2) {
-    if (matrix1.size() != matrix2.size()) return false;
-    auto sorted1 = matrix1;
-    auto sorted2 = matrix2;
-    std::sort(sorted1.begin(), sorted1.end());
-    std::sort(sorted2.begin(), sorted2.end());
-    return sorted1 == sorted2;
-}
+#include <pbc/pbc.h>
 
-TEST(LSSSTest, ReconstructTest1) {
+#include <curve/params.h>
+
+using namespace utils;
+
+// CurveParams curve;
+
+TEST(LSSSTest, SimpleExpressionTest) {
+    CurveParams curve;
+    pairing_t pairing;
+    pbc_param_t par;
+    pbc_param_init_set_str(par, curve.a_param.c_str());
+    pairing_init_pbc_param(pairing, par);
     std::string policy = "(A and B and C) and (D or E or F) and (G and H and (I or J or K or L))";
-    utils::LSSS parser(policy);
-    // std::cout << "LSSS Matrix: \n";
-    // parser.printMatrix();
-    // std::cout << "LSSS Rho: \n";
-    // parser.printRho();
-    int *shares;
-    parser.share(42, &shares);
-    int res_s = parser.reconstruct(std::vector<std::string>{"A", "B", "C", "D", "G", "H", "I"}, shares);
-    EXPECT_EQ(res_s, 42);
+    LSSS parser(&pairing, policy);
+    std::cout << "DEBUG probe parser OK\n";
+    element_t secret;
+    element_init_Zr(secret, pairing);
+    element_set_si(secret, 42);
+    std::vector<element_t*> shares = parser.share(&secret);
+    std::cout << "DEBUG probe share OK\n";
+    element_t res_s;
+    element_init_Zr(res_s, pairing);
+    parser.reconstruct(std::vector<std::string>{"A", "B", "C", "D", "G", "H", "I"}, shares, &res_s);
+    std::cout << "DEBUG probe reconstruct OK\n";
+    EXPECT_TRUE(!element_cmp(secret, res_s));
 }
 
-TEST(LSSSTest, ReconstructTest2) {
+// (A or B) and (C and D and (E or F)) and (G or H or (I and J))
+// "A", "C", "D", "E", "G"
+TEST(LSSSTest, ComplexExpressionTest) {
+    CurveParams curve;
+    pairing_t pairing;
+    pbc_param_t par;
+    pbc_param_init_set_str(par, curve.a_param.c_str());
+    pairing_init_pbc_param(pairing, par);
     std::string policy = "(A or B) and (C and D and (E or F)) and (G or H or (I and J))";
-    utils::LSSS parser(policy);
-    // std::cout << "LSSS Expression: \n";
-    // parser.printExpression();
-    // std::cout << "LSSS Matrix: \n";
-    // parser.printMatrix();
-    // std::cout << "LSSS Rho: \n";
-    // parser.printRho();
-    int *shares;
-    parser.share(42, &shares);
-    int res_s = parser.reconstruct(std::vector<std::string>{"A", "C", "D", "E", "G"}, shares);
-    EXPECT_EQ(res_s, 42);
+    LSSS parser(&pairing, policy);
+    std::cout << "DEBUG probe parser OK\n";
+    element_t secret;
+    element_init_Zr(secret, pairing);
+    element_set_si(secret, 42);
+    std::vector<element_t*> shares = parser.share(&secret);
+    std::cout << "DEBUG probe share OK\n";
+    element_t res_s;
+    element_init_Zr(res_s, pairing);
+    parser.reconstruct(std::vector<std::string>{"A", "C", "D", "E", "G"}, shares, &res_s);
+    std::cout << "DEBUG probe reconstruct OK\n";
+    EXPECT_TRUE(!element_cmp(secret, res_s));
 }
 
-// TODO: priority of boolean operators
-TEST(LSSSTest, ReconstructTest3) {
+// A or B and C and D and E or F and G or H or I and J
+// "A", "C", "D"
+TEST(LSSSTest, PriorityTest) {
+    CurveParams curve;
+    pairing_t pairing;
+    pbc_param_t par;
+    pbc_param_init_set_str(par, curve.a_param.c_str());
+    pairing_init_pbc_param(pairing, par);
     std::string policy = "A or B and C and D and E or F and G or H or I and J";
-    utils::LSSS parser(policy);
-    // std::cout << "LSSS Expression: \n";
-    // parser.printExpression();
-    // std::cout << "LSSS Matrix: \n";
-    // parser.printMatrix();
-    // std::cout << "LSSS Rho: \n";
-    // parser.printRho();
-    int *shares;
-    parser.share(42, &shares);
-    int res_s = parser.reconstruct(std::vector<std::string>{"A"}, shares);
-    EXPECT_EQ(res_s, 42);
+    LSSS parser(&pairing, policy);
+    std::cout << "DEBUG probe parser OK\n";
+    element_t secret;
+    element_init_Zr(secret, pairing);
+    element_set_si(secret, 42);
+    std::vector<element_t*> shares = parser.share(&secret);
+    std::cout << "DEBUG probe share OK\n";
+    element_t res_s;
+    element_init_Zr(res_s, pairing);
+    parser.reconstruct(std::vector<std::string>{"A", "C", "D"}, shares, &res_s);
+    std::cout << "DEBUG probe reconstruct OK\n";
+    EXPECT_TRUE(!element_cmp(secret, res_s));
 }
 
+// CP and ABE and (sm9 or pku)
+// "ABE", "CP", "sm9"
 TEST(LSSSTest, ArbitraryAttributeTest) {
-    std::string policy = "A and BB and (CCC or DDDD)";
-    utils::LSSS parser(policy);
-    int *shares;
-    parser.share(42, &shares);
-    int res_s = parser.reconstruct(std::vector<std::string>{"A", "BB", "CCC"}, shares);
-    EXPECT_EQ(res_s, 42);
+    CurveParams curve;
+    pairing_t pairing;
+    pbc_param_t par;
+    pbc_param_init_set_str(par, curve.a_param.c_str());
+    pairing_init_pbc_param(pairing, par);
+    std::string policy = "CP and ABE and (sm9 or pku)";
+    LSSS parser(&pairing, policy);
+    std::cout << "DEBUG probe parser OK\n";
+    element_t secret;
+    element_init_Zr(secret, pairing);
+    element_set_si(secret, 42);
+    std::vector<element_t*> shares = parser.share(&secret);
+    std::cout << "DEBUG probe share OK\n";
+    element_t res_s;
+    element_init_Zr(res_s, pairing);
+    parser.reconstruct(std::vector<std::string>{"ABE", "CP", "sm9"}, shares, &res_s);
+    std::cout << "DEBUG probe reconstruct OK\n";
+    EXPECT_TRUE(!element_cmp(secret, res_s));
 }
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
+    // CurveParams curve;
+    // pairing_t pairing;
+    // pbc_param_t par;
+    // pbc_param_init_set_str(par, curve.a_param.c_str());
+    // pairing_init_pbc_param(pairing, par);
+    // std::string policy = "(A and B and C) and (D or E or F) and (G and H and (I or J or K or L))";
+    // LSSS parser(&pairing, policy);
+    // std::cout << "DEBUG probe parser OK\n";
+    // element_t secret;
+    // element_init_Zr(secret, pairing);
+    // element_set_si(secret, 42);
+    // std::vector<element_t*> shares = parser.share(&secret);
+    // std::cout << "DEBUG probe share OK\n";
+    // element_t res_s;
+    // element_init_Zr(res_s, pairing);
+    // parser.reconstruct(std::vector<std::string>{"A", "B", "C", "D", "G", "H", "I"}, shares, &res_s);
+    // std::cout << "DEBUG probe reconstruct OK\n";
+    // if (!element_cmp(secret, res_s)) {
+    //     std::cout << "CORRECT\n";
+    // } else {
+    //     std::cout << "WRONG\n";
+    // }
+
+    // return 0;
 }

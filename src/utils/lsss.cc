@@ -1,46 +1,77 @@
 #include "utils/lsss.h"
+#include <cstdlib>
 
 namespace utils {
-std::vector<std::string> tokenize(const std::string& input) {
-    // std::regex token_regex("(and|or|\\w+)");
-    // auto tokens_begin = std::sregex_iterator(input.begin(), input.end(), token_regex);
-    // auto tokens_end = std::sregex_iterator();
-    // std::vector<std::string> tokens;
-    // for (std::sregex_iterator i = tokens_begin; i != tokens_end; ++i) {
-    //     tokens.push_back(i->str());
-    // }
-    // return tokens;
+
+// ExprParser
+std::vector<std::string> ExprParser::tokenize(const std::string& input) {
     std::vector<std::string> tokens;
     int n = input.size();
     for (int i = 0; i < n; ) {
+        // 跳过空格
         while (i < n && isspace(input[i])) i++;
         if (i >= n) break;
-        
+
+        // 处理括号
         if (input[i] == '(' || input[i] == ')') {
             tokens.push_back(std::string(1, input[i++]));
-        } else if (i + 3 <= n && input.substr(i, 3) == "and") {
+            continue;
+        }
+
+        // 处理关键字 "and" 或 "or"
+        if (i + 3 <= n && input[i] == 'a' && input[i+1] == 'n' && input[i+2] == 'd') {
             tokens.push_back("and");
             i += 3;
-        } else if (i + 2 <= n && input.substr(i, 2) == "or") {
+            continue;
+        }
+        if (i + 2 <= n && input[i] == 'o' && input[i+1] == 'r') {
             tokens.push_back("or");
             i += 2;
-        } else {
-            // 处理单个字符的操作数（如A/B/C等）
-            // TODO: 处理更多操作数，例如字符串
-            // tokens.push_back(std::string(1, input[i++]));
-            std::string token;
-            while (i < n && isalpha(input[i])) {
-                token += input[i++];
-            }
+            continue;
+        }
+
+        // 处理标识符（允许字母和数字）
+        std::string token;
+        bool found = false;
+        while (i < n && isalnum(input[i])) {
+            token += input[i++];
+            found = true;
+        }
+        if (found) {
             tokens.push_back(token);
+        } else {
+            // 遇到无法处理的字符（如符号），强制递增i
+            i++; 
         }
     }
     return tokens;
 }
 
-std::unordered_map<int, std::string> LSSS::parse(std::string& input) {
-    auto tokens = tokenize(input);
+// impossible to exceed expression.size()
+int ExprParser::traverse(int nodeIdx, int c, std::vector<int> &pVec) {
+    if (nodeIdx >=0) { // is an operator
+        Node &node = expression[nodeIdx];
+        if (node.op_type == 1) { // OR gate
+            return std::max(traverse(node.left, c, pVec), traverse(node.right, c, pVec));
+        } else if (node.op_type == 0) { // AND gate
+            std::vector<int> lVec(pVec);
+            lVec.push_back(1);
+            std::vector<int> rVec(0, pVec.size());
+            rVec.push_back(-1);
+            return std::max(traverse(node.left, c + 1, lVec), traverse(node.right, c + 1, rVec));
+        }
+    } else { // is leaf node
+        // std::cout << "DEBUG - test: vecs[itor_map[nodeIdx]] = pVec;" << std::endl;
+        // vecs[itor_map[nodeIdx]] = pVec;
+        vecs.push_back(pVec);
+        // std::cout << "DEBUG - test: vecs[itor_map[nodeIdx]] = pVec;" << std::endl;
+        return c;
+    }
+}
 
+ExprParser::ExprParser(std::string &input) {
+    std::vector<std::string> tokens = tokenize(input);
+    
     std::vector<std::string> postfix;
     std::stack<std::string> op_stack;
 
@@ -57,375 +88,275 @@ std::unordered_map<int, std::string> LSSS::parse(std::string& input) {
             }
             op_stack.push(token);
         } else if (token == "(") {
-            // 左括号直接入栈
             op_stack.push(token);
         } else if (token == ")") {
-            // 遇到右括号，弹出操作符直到左括号
             while (!op_stack.empty() && op_stack.top() != "(") {
                 postfix.push_back(op_stack.top());
                 op_stack.pop();
             }
             if (!op_stack.empty() && op_stack.top() == "(") {
-                op_stack.pop(); // 弹出左括号
+                op_stack.pop();
             }
         } else {
-            // 操作数直接加入后缀表达式
             postfix.push_back(token);
         }
     }
 
-    // 将剩余的操作符加入后缀表达式
     while (!op_stack.empty()) {
         postfix.push_back(op_stack.top());
         op_stack.pop();
     }
 
-    std::unordered_map<std::string, int> var_map;
-    std::unordered_map<int, std::string> attr_map;
-    // build expression tree
     std::stack<int> node_stack;
-    std::stack<std::string> str_node_stack;
-    std::vector<Node> nodes;
 
     for (const auto& token : postfix) {
-        if (token == "and" || token == "or") {
+        if (token == "and" || token == "or") { // is an operator
             int right = node_stack.top();
             node_stack.pop();
             int left = node_stack.top();
             node_stack.pop();
             int op_type = (token == "and") ? 0 : 1;
-            int index = nodes.size();
-            nodes.push_back({op_type, left, right});
+            int index = expression.size();
+            expression.push_back({op_type, left, right});
             node_stack.push(index);
-        } else {
-            if (var_map.find(token) == var_map.end()) { // 映射不存在，创建映射
-                var_map[token] = -static_cast<int>(var_map.size()) - 1; // 将属性值映射为负数
-                attr_map[var_map[token]] = token;
-            } // 否则 var_map[token] 为节点中的映射值
-            node_stack.push(var_map[token]);
+        } else { // is an attribute -> reach a leaf node
+            if (atoi_map.find(token) == atoi_map.end()) { // 映射不存在，创建映射
+                atoi_map[token] = -static_cast<int>(atoi_map.size()) - 1; // 将属性值映射为负数
+                // TODO: 这一堆映射该优化了
+                itoa_map[atoi_map[token]] = token;
+                itor_map.push_back(atoi_map[token]);
+                rtoi_map[itor_map.size() - 1] = atoi_map[token];
+            } // 否则 atoi_map[token] 为节点中的映射值
+            node_stack.push(atoi_map[token]);
         }
     }
 
     // Adjust indices for reversed nodes
-    for (auto& node : nodes) {
+    for (auto& node : expression) {
         if (node.left >= 0) {
-            node.left = nodes.size() - 1 - node.left;
+            node.left = expression.size() - 1 - node.left;
         }
         if (node.right >= 0) {
-            node.right = nodes.size() - 1 - node.right;
+            node.right = expression.size() - 1 - node.right;
         }
     }
-    std::reverse(nodes.begin(), nodes.end());
+    std::reverse(expression.begin(), expression.end());
 
-    // tree expression
-    expression = nodes;
-    return attr_map;
+    leaf_count = atoi_map.size();
+    // vecs = new std::vector<int>(leaf_count);
+    std::vector<int> iVec = {1};
+    tree_depth = traverse(0, 1, iVec);
 }
 
-void LSSS::generateVectors(int nodeIndex, std::vector<int> parentVector, int c,
-    std::vector<std::vector<int>>& matrix,
-    std::vector<std::string>& mapping,
-    const std::vector<LSSS::Node>& exprtree,
-    const std::unordered_map<int, std::string>& attr_map) {
-    const LSSS::Node& node = exprtree[nodeIndex];
-
-    if (node.op_type == 1) { // OR gate
-        if (node.left < 0) { // leaf node & attribute
-            matrix.push_back(parentVector);
-            mapping.push_back(attr_map.at(node.left)); // 修改：使用 at() 方法
-        } else {
-            generateVectors(node.left, parentVector, c, matrix, mapping, exprtree, attr_map);
-        }
-        if (node.right < 0) {
-            matrix.push_back(parentVector);
-            mapping.push_back(attr_map.at(node.right)); // 修改：使用 at() 方法
-        } else { // recursive call
-            generateVectors(node.right, parentVector, c, matrix, mapping, exprtree, attr_map);
-        }
-    } else if (node.op_type == 0) { // AND gate
-        // expand parent v to |c|
-        while (parentVector.size() < static_cast<size_t>(c)) {
-            parentVector.push_back(0);
-        }
-        // child v
-        std::vector<int> vec1 = parentVector;
-        vec1.push_back(1);
-        std::vector<int> vec0(c, 0);
-        vec0.push_back(-1);
-        int nctr = c + 1; // counter increment
-
-        if (node.left < 0) {
-            matrix.push_back(vec1);
-            mapping.push_back(attr_map.at(node.left)); // 修改：使用 at() 方法
-        } else { // 子节点递归处理
-            generateVectors(node.left, vec1, nctr, matrix, mapping, exprtree, attr_map);
-        }
-        if (node.right < 0) {
-            matrix.push_back(vec0);
-            mapping.push_back(attr_map.at(node.right)); // 修改：使用 at() 方法
-        } else { // recursive call
-            generateVectors(node.right, vec0, nctr, matrix, mapping, exprtree, attr_map);
+// LSSS
+LSSS::LSSS(pairing_t *bp, std::string str) {
+    parser = new ExprParser(str);
+    l = parser->get_l();
+    n = parser->get_n();
+    pairing = bp;
+    policy.M = std::vector<std::vector<element_t*>>(l, std::vector<element_t*>(n));
+    for (int i = 0; i < l; ++i) {
+        for (int j = 0; j < n; ++j) {
+            policy.M[i][j] = (element_t *)(new element_t);
+            element_init_Zr(*(policy.M[i][j]), *pairing);
         }
     }
-}
-
-std::pair<std::vector<std::vector<int>>, std::vector<std::string>> LSSS::convertToLSSS(const std::unordered_map<int, std::string>& attr_map) {
-    const std::vector<Node> &nodes = expression;
-    // 生成向量
-    std::vector<std::vector<int>> matrix;
-    std::vector<std::string> mapping;
-    int c = 1;
-    generateVectors(0, {1}, c, matrix, mapping, nodes, attr_map);
-
-    // 填充向量到最大长度
-    size_t maxLen = 0;
-    for (const auto& vec : matrix) {
-        if (vec.size() > maxLen) {
-            maxLen = vec.size();
-        }
-    }
-    for (auto& vec : matrix) {
-        while (vec.size() < maxLen) {
-            vec.push_back(0);
-        }
-    }
-
-    M = matrix;
-    rho = mapping;
-
-    return {matrix, mapping};
-}
-
-LSSS::LSSS(std::string policy) {
-    std::unordered_map<int, std::string> attr_map = this->parse(policy);
-    std::pair<std::vector<std::vector<int>>, std::vector<std::string>> lsss = convertToLSSS(attr_map);
+    policy.rho = std::vector<std::string>(l, "");
+    genLSSSPair();
 }
 
 LSSS::~LSSS() {
-
 }
 
-void LSSS::share(int secret, int** shares) {
-    std::vector<std::vector<int>>& matrix = M;
-    int l = matrix.size(); // 矩阵的行数（即向量维度）
-    if (l == 0) return; // 处理空矩阵
-    int n = matrix[0].size(); // 矩阵的列数（结果向量的维度）
-
-    std::vector<int> vec;
-    vec.push_back(secret);
-    for (int i = 1; i < n; ++i) {
-        vec.push_back(rand() % 100); // 需先调用srand初始化种子
-    }
-
-    std::vector<int> result(l, 0); // 初始化结果向量 [[8]]
-
-    *shares = new int[l];
-    // std::cout << "DEBUG - shares: ";
-    memset(*shares, 0, l * sizeof(int));
+void LSSS::genLSSSPair() {
     for (int i = 0; i < l; ++i) {
         for (int j = 0; j < n; ++j) {
-            (*shares)[i] += vec[j] * matrix[i][j];
+            element_set0(*(policy.M[i][j]));
         }
-        // std::cout << (*shares)[i] << " ";
+        for (int j = 0; j < parser->vecs[i].size(); ++j) {
+            element_set_si(*(policy.M[i][j]), (parser->vecs[i])[j]);
+        }
     }
-    // std::cout << std::endl;
+    for (int i = 0; i < parser->get_l(); ++i) {
+        policy.rho[i] = parser->itoa_map[parser->rtoi_map[i]];
+    }
 }
 
-// void LSSS::share(element_t secret, element_t **shares) {
-//     std::vector<std::vector<int>>& matrix = M;
-//     int l = matrix.size(); // 矩阵的行数（即向量维度）
-//     if (l == 0) return; // 处理空矩阵
-//     int n = matrix[0].size(); // 矩阵的列数（结果向量的维度）
+std::vector<element_t*> LSSS::share(element_t *secret) {
+    element_t tmp;
+    element_init_Zr(tmp, *pairing);
 
-//     std::vector<int> vec;
-//     vec.push_back(secret);
-//     for (int i = 1; i < n; ++i) {
-//         vec.push_back(rand() % 100); // 需先调用srand初始化种子
-//     }
-
-//     std::vector<int> result(l, 0); // 初始化结果向量 [[8]]
-
-//     *shares = new element_t[l];
-//     memset(*shares, 0, l * sizeof(int));
-//     for (int i = 0; i < l; ++i) {
-//         for (int j = 0; j < n; ++j) {
-//             element_t temp;
-//             element_init_Zr(temp, pairing);
-//             int temp = vec[j] * matrix[i][j];
-            
-//             // (*shares)[i] += vec[j] * matrix[i][j];
-//         }
-//     }
-// }
-
-std::vector<double> find_special_solution(const std::vector<std::vector<int>>& mat) {
-    int m = mat.size();
-    if (m == 0) return std::vector<double>();
-    int n = mat[0].size();
-
-    std::vector<std::vector<double>> aug(m, std::vector<double>(n + 1));
-    for (int i = 0; i < m; ++i) {
-        for (int j = 0; j < n; ++j) {
-            aug[i][j] = mat[i][j];
-        }
-        aug[i][n] = (i == 0) ? 1.0 : 0.0;
+    std::vector<element_t*> vec(n);
+    vec[0] = (element_t *)(new element_t);
+    element_init_Zr(*(vec[0]), *pairing);
+    element_set(*(vec[0]), *secret);
+    for (int i = 1; i < n; ++i) {
+        vec[i] = (element_t *)(new element_t);
+        element_init_Zr(*(vec[i]), *pairing);
+        element_random(*(vec[i]));
     }
 
-    int rank = 0;
-    std::vector<int> pivot_cols(m, -1); // 记录主元列的列号
+    std::vector<element_t*> shares(l);
+    for (int i = 0; i < l; ++i) {
+        shares[i] = (element_t *)(new element_t);
+        element_init_Zr(*(shares[i]), *pairing);
+        element_set0(*(shares[i]));
+    }
 
-    for (int col = 0; col < n && rank < m; ++col) {
-        // 寻找主元行
+    for (int i = 0; i < l; ++i) {
+        for (int j = 0; j < n; ++j) {
+            element_mul(tmp, *(vec[j]), *(policy.M[i][j]));
+            element_add((*shares[i]), (*shares[i]), tmp);
+        }
+    }
+    return shares;
+}
+
+void LSSS::solve(int row_n, int col_n, std::vector<element_t*> &omega) {
+    element_t tmp;
+    element_init_Zr(tmp, *pairing);
+    element_t pivot_inv;
+    element_init_Zr(pivot_inv, *pairing);
+
+    std::vector<std::vector<element_t*>> aug(row_n, std::vector<element_t*>(col_n + 1));
+    // tranpose & augment
+    for (int i = 0; i < row_n; ++i) {
+        for (int j = 0; j < col_n; ++j) {
+            aug[i][j] = (element_t *)(new element_t);
+            element_init_Zr(*(aug[i][j]), *pairing);
+            element_set(*(aug[i][j]), *(policy.M[S[j]][i]));
+        }
+        aug[i][col_n] = (element_t *)(new element_t);
+        element_init_Zr(*(aug[i][col_n]), *pairing);
+        element_set_si(*(aug[i][col_n]), ((i == 0) ? 1 : 0));
+    }
+
+    std::cout << "DEBUG probe solve - augment - OK\n";
+
+    int rank = 0;
+    std::vector<int> pivot_cols(row_n, -1);
+    for (int col = 0; col < col_n && rank < row_n; ++col) {
+        // find pivot row
         int pivot_row = rank;
-        for (int row = rank + 1; row < m; ++row) {
-            if (abs(aug[row][col]) > abs(aug[pivot_row][col])) {
+        for (int row = rank + 1; row < row_n; ++row) {
+            if (!element_is0(*(aug[row][col]))) {
                 pivot_row = row;
             }
         }
-
-        if (abs(aug[pivot_row][col]) < 1e-9) {
-            continue; // 当前列无法选主元，跳过
+        // is pivot?
+        if (element_is0(*(aug[pivot_row][col]))) {
+            continue;
         }
-
-        // 交换主元行
-        swap(aug[rank], aug[pivot_row]);
-
-        // 归一化主元行
-        double pivot_val = aug[rank][col];
-        for (int j = col; j <= n; ++j) {
-            aug[rank][j] /= pivot_val;
+        // swap pivot row
+        std::swap(aug[rank], aug[pivot_row]);
+        element_invert(pivot_inv, *(aug[rank][col]));
+        for (int j = col; j <= col_n; ++j) {
+            element_mul(*(aug[rank][j]), *(aug[rank][j]), pivot_inv);
         }
-
-        // 消去其他行的当前列
-        for (int row = 0; row < m; ++row) {
+        for (int row = 0; row < row_n; ++row) {
             if (row != rank) {
-                double factor = aug[row][col];
-                for (int j = col; j <= n; ++j) {
-                    aug[row][j] -= factor * aug[rank][j];
+                element_t factor;
+                element_init_Zr(factor, *pairing);
+                element_set(factor, *(aug[row][col]));
+                for (int j = col; j <= col_n; ++j) {
+                    element_mul(tmp, *(aug[rank][j]), factor);
+                    element_sub(*(aug[row][j]), *(aug[row][j]), tmp);
                 }
             }
         }
-
-        // 记录主元列
+        // record pivot col
         pivot_cols[rank] = col;
-        rank++;
+        ++rank;
     }
-
-    // 检查是否有矛盾
-    for (int row = rank; row < m; ++row) {
-        if (abs(aug[row][n]) > 1e-9) {
-            return std::vector<double>(); // 无解，返回空
+    std::cout << "DEBUG probe solve - pivot - OK\n";
+    // check for conflicts
+    for (int row = rank; row < row_n; ++row) {
+        if (!element_is0(*(aug[row][col_n]))) {
+            throw std::runtime_error("No solution"); // 无解，返回空
         }
     }
-
-    // 构造解向量
-    std::vector<double> x(n, 0.0);
-
-    // 逆序处理主元行
+    std::cout << "DEBUG probe solve - no solution - OK\n";
+    // // solution vector
+    // std::vector<element_t*> x(col_n + 1);
+    // for (int i = 0; i <= col_n; ++i) {
+    //     x[i] = (element_t *)(new element_t);
+    //     element_init_Zr(*(x[i]), *pairing);
+    //     element_set0(*(x[i]));
+    // }
+    std::cout << "DEBUG probe solve - solution vector - OK\n";
+    // find special solution (reverse)
     for (int row = rank - 1; row >= 0; --row) {
         int col = pivot_cols[row];
-        double val = aug[row][n];
-        // 减去后面的变量的贡献
-        for (int j = col + 1; j < n; ++j) {
-            val -= aug[row][j] * x[j];
+        element_t val;
+        element_init_Zr(val, *pairing);
+        element_set(val, *(aug[row][col_n]));
+        for (int j = col + 1; j < col_n; ++j) {
+            element_mul(tmp, *(aug[row][j]), *(omega[j]));
+            element_sub(val, val, tmp);
         }
-        x[col] = val;
+        element_set(*(omega[col]), val);
     }
+    std::cout << "DEBUG probe solve - special solution - OK\n";
 
-    return x;
+    // element_clear(tmp);
+    // return x;
 }
 
-std::vector<int> compute_omega(const std::vector<std::vector<int>>& mat) {
-    int l = mat.size();
-    // std::cout << "DEBUG - l: " << l << std::endl;
-    if (l == 0) {
-        throw std::invalid_argument("Matrix has zero rows.");
-    }
-    int n = mat[0].size();
-    // std::cout << "DEBUG - n: " << n << std::endl;
-    if (n == 0) {
-        throw std::invalid_argument("Matrix has zero columns.");
-    }
-    // if (n > l) {
-    //     throw std::runtime_error("The number of equations exceeds the number of variables, no solution exists.");
-    // }
+void LSSS::reconstruct(std::vector<std::string> aSet, std::vector<element_t*> shares, element_t *result) {
+    element_t tmp;
+    element_init_Zr(tmp, *pairing);
 
-    // tranpose
-    std::vector<std::vector<int>> tmat(n, std::vector<int>(l, 0));
-    for (int i = 0; i < n; ++i) {
-        for (int k = 0; k < l; ++k) {
-            tmat[i][k] = mat[k][i];
-        }
-    }
-    std::vector<double> omega = find_special_solution(tmat);
-
-    // 转换为整数（四舍五入）
-    std::vector<int> result(l);
-    for (int i = 0; i < l; ++i) {
-        result[i] = static_cast<int>(std::round(omega[i]));
-    }
-
-    return result;
-}
-
-int LSSS::reconstruct(std::vector<std::string> aSet, int *shares) {
-    std::vector<int> S; // 存储匹配的行号
+    S.clear();
     std::unordered_map<int, int> row_mapping; // 小矩阵行号与原始行号的映射
-
     // 匹配属性集合，找到 rho(i) 在 aSet 中出现的行号
-    for (size_t i = 0; i < rho.size(); ++i) {
-        if (std::find(aSet.begin(), aSet.end(), rho[i]) != aSet.end()) {
+    for (size_t i = 0; i < l; ++i) {
+        if (std::find(aSet.begin(), aSet.end(), (policy.rho)[i]) != aSet.end()) {
             S.push_back(i);
             row_mapping[S.size() - 1] = i; // 记录小矩阵行号与原始行号的映射
         }
     }
+    if (S.empty()) {}
 
-    if (S.empty()) {
-        return {};
-    }
-
-    // 提取 S 中对应的行组成小矩阵 mat
-    std::vector<std::vector<int>> mat(S.size(), std::vector<int>(M[0].size(), 0));
-    for (size_t i = 0; i < S.size(); ++i) {
-        mat[i] = M[S[i]]; // 提取对应的行
-    }
-
-    std::vector<int> omega = compute_omega(mat);
-
-    // inner product
-    int res = 0;
+    std::vector<element_t*> omega(S.size());
     for (int i = 0; i < S.size(); ++i) {
-        res += omega[i] * shares[row_mapping[i]];
+        omega[i] = (element_t *)(new element_t);
+        element_init_Zr(*(omega[i]), *pairing);
     }
-    return res;
+    solve(n, S.size(), omega);
+    // auto omega = solve(n, S.size());
+
+    std::cout << "DEBUG probe reconstruct - solve - OK\n";
+
+    for (int i = 0; i < S.size(); ++i) {
+        element_mul(tmp, *(shares[row_mapping[i]]), *(omega[i]));
+        element_add(*result, *result, tmp);
+    }
 }
 
-std::unordered_map<int, int> LSSS::retriveOmega(std::vector<std::string> aSet) {
-    std::vector<int> S; // 存储匹配的行号
-    std::unordered_map<int, int> row_mapping;
-    
-    for (size_t i = 0; i < rho.size(); ++i) {
-        if (std::find(aSet.begin(), aSet.end(), rho[i]) != aSet.end()) {
+std::unordered_map<std::string, element_t*> LSSS::retriveOmega(std::vector<std::string> aSet) {
+    // std::vector<int> S; // 存储匹配的行号
+    std::unordered_map<int, int> row_mapping; // 小矩阵行号与原始行号的映射
+    // 匹配属性集合，找到 rho(i) 在 aSet 中出现的行号
+    for (size_t i = 0; i < l; ++i) {
+        if (std::find(aSet.begin(), aSet.end(), (policy.rho)[i]) != aSet.end()) {
             S.push_back(i);
-            row_mapping[S.size() - 1] = i;
+            row_mapping[S.size() - 1] = i; // 记录小矩阵行号与原始行号的映射
         }
     }
+    if (S.empty()) {}
 
-    if (S.empty()) {
-        return {};
+    std::vector<element_t*> omega(S.size());
+    for (int i = 0; i < S.size(); ++i) {
+        omega[i] = (element_t *)(new element_t);
+        element_init_Zr(*(omega[i]), *pairing);
     }
-
-    std::vector<std::vector<int>> mat(S.size(), std::vector<int>(M[0].size(), 0));
-    for (size_t i = 0; i < S.size(); ++i) {
-        mat[i] = M[S[i]];
+    solve(n, S.size(), omega);
+    std::unordered_map<std::string, element_t*> omega_map;
+    for (int i = 0; i < S.size(); ++i) {
+        // idx of original rho to S
+        omega_map[parser->itoa_map[parser->rtoi_map[row_mapping[i]]]] = (omega[i]);
     }
-
-    std::unordered_map<int, int> omega;
-    std::vector<int> omega_v = compute_omega(mat);
-    for (int i = 0; i < omega_v.size(); ++i) {
-        omega[row_mapping[i]] = omega_v[i];
-    }
-    return omega;
+    return omega_map;
 }
 
 }
