@@ -44,8 +44,8 @@ susm9::susm9(std::string &param, std::vector<std::string> Universe) {
     // nu
     element_init_GT(pp.nu, pp.pairing);
     // pairing_apply(pp.nu, pp.g, pp.g, pp.pairing);
-    element_pairing(pp.nu, pp.g1, pp.g2);
-    element_pow_zn(pp.nu, pp.nu, pp.alpha);
+    element_pairing(pp.nu, pp.g_pub, pp.g2);
+    // element_pow_zn(pp.nu, pp.nu, pp.alpha);
     // set up attribute parameters
     for (auto x : Universe) {
         element_t *hx = (element_t *)(new element_t);
