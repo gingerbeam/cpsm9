@@ -24,39 +24,27 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON)
 FetchContent_MakeAvailable(googletest)
 
-# add_executable(sm9_cp_test
-#         test/sm9_cp_test.cc
-#         src/crypto/sm9_cp.cc)
-        
-# target_link_libraries(sm9_cp_test gtest pbc OpenSSL::SSL
-#         "/lib/x86_64-linux-gnu/libgmpxx.a"
-#         "/lib/x86_64-linux-gnu/libgmp.a")
-
 add_executable(w11_test
         test/w11_test.cc
         src/crypto/w11.cc
         src/utils/lsss.cc
+        src/utils/hash.cc
         src/curve/params.cc)
         
 target_link_libraries(w11_test gtest pbc OpenSSL::SSL
         "/lib/x86_64-linux-gnu/libgmpxx.a"
         "/lib/x86_64-linux-gnu/libgmp.a")
 
-# add_executable(rw13_test
-#         test/rw13_test.cc
-#         src/crypto/rw13.cc)
+add_executable(susm9_test
+        test/susm9_test.cc
+        src/crypto/susm9.cc
+        src/utils/lsss.cc
+        src/utils/hash.cc
+        src/curve/params.cc)
         
-# target_link_libraries(rw13_test gtest pbc OpenSSL::SSL
-#         "/lib/x86_64-linux-gnu/libgmpxx.a"
-#         "/lib/x86_64-linux-gnu/libgmp.a")
-
-# add_executable(shi_test
-#         test/shi_test.cc
-#         src/crypto/shi.cc)
-        
-# target_link_libraries(shi_test gtest pbc OpenSSL::SSL
-#         "/lib/x86_64-linux-gnu/libgmpxx.a"
-#         "/lib/x86_64-linux-gnu/libgmp.a")
+target_link_libraries(susm9_test gtest pbc OpenSSL::SSL
+        "/lib/x86_64-linux-gnu/libgmpxx.a"
+        "/lib/x86_64-linux-gnu/libgmp.a")
 
 add_executable(lsss_test
         test/lsss_test.cc
