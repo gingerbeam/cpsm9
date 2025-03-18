@@ -46,6 +46,17 @@ target_link_libraries(susm9_test gtest pbc OpenSSL::SSL
         "/lib/x86_64-linux-gnu/libgmpxx.a"
         "/lib/x86_64-linux-gnu/libgmp.a")
 
+add_executable(rw13_test
+        test/rw13_test.cc
+        src/crypto/rw13.cc
+        src/utils/lsss.cc
+        src/utils/hash.cc
+        src/curve/params.cc)
+        
+target_link_libraries(rw13_test gtest pbc OpenSSL::SSL
+        "/lib/x86_64-linux-gnu/libgmpxx.a"
+        "/lib/x86_64-linux-gnu/libgmp.a")
+
 add_executable(lsss_test
         test/lsss_test.cc
         src/utils/lsss.cc
