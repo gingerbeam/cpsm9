@@ -5,111 +5,143 @@
 
 namespace crypto {
 
-w11::~w11() {
-    element_clear(g);
-    element_clear(a);
-    element_clear(alpha);
-    element_clear(nu);
-    element_clear(ga);
-    delete[] h;
-}
-
-void w11::Setup() {}
-
-void w11::Setup(int U) {
-    std::cout << "Waters11: Scheme Setup.\n";
-    lenU = U;
-    element_init_G1(g, pairing);
-    element_init_Zr(a, pairing);
-    element_init_Zr(alpha, pairing);
-    element_init_GT(nu, pairing);
-    element_init_G1(ga, pairing);
-    h = new element_t[lenU];
-    for (int i = 0; i < lenU; i++) {
-        element_init_G1(h[i], pairing);
+w11::w11(std::string &param, std::vector<std::string> Universe) {
+    // std::cout << "Waters11: Scheme Setup.\n";
+    // init pairing
+    pbc_param_t par;
+    pbc_param_init_set_str(par, param.c_str());
+    pairing_init_pbc_param(pp.pairing, par);
+    // rest of pp
+    element_init_G1(pp.g, pp.pairing);
+    element_random(pp.g);
+    element_init_Zr(pp.a, pp.pairing);
+    element_random(pp.a);
+    element_init_Zr(pp.alpha, pp.pairing);
+    element_random(pp.alpha);
+    // nu
+    element_init_GT(pp.nu, pp.pairing);
+    // pairing_apply(pp.nu, pp.g, pp.g, pp.pairing);
+    element_pairing(pp.nu, pp.g, pp.g);
+    element_pow_zn(pp.nu, pp.nu, pp.alpha);
+    // g^a
+    element_init_G1(pp.ga, pp.pairing);
+    element_pow_zn(pp.ga, pp.g, pp.a);
+    // set up attribute parameters
+    for (auto x : Universe) {
+        element_t *hx = (element_t *)(new element_t);
+        element_init_G1(*hx, pp.pairing);
+        element_random(*hx);
+        pp.h.insert({x, hx});
     }
-    // set up public parameters
-    element_random(g);
-    element_random(a);
-    element_random(alpha);
-    pairing_apply(nu, g, g, pairing);
-    element_pow_zn(nu, nu, alpha);
-    element_pow_zn(ga, g, a);
+    // std::cout << "Waters11: Scheme Setup Done.\n";
 }
 
-void w11::Keygen(std::vector<std::string> attrs) {
-    std::cout << "Waters11: Keygen.\n";
+void w11::Keygen(attribute_set *A, secretkey *sk) {
+    element_t tmp;
+    element_init_G1(tmp, pp.pairing);
 
+    // std::cout << "Waters11: Keygen.\n";
+    // randomness
+    element_t t;
+    element_init_Zr(t, pp.pairing);
+    element_random(t);
+    // K = g^alpha g^at
+    element_init_G1(sk->k, pp.pairing);
+    element_pow_zn(sk->k, pp.g, pp.alpha);
+    element_pow_zn(tmp, pp.ga, t);
+    element_mul(sk->k, sk->k, tmp);
+    // L = g^t
+    element_init_G1(sk->l, pp.pairing);
+    element_pow_zn(sk->l, pp.g, t);
+    // for all a in attrs, Kx = h_x^t
+    for (auto a : A->attrs) {
+        element_t *ka = (element_t *)(new element_t);
+        element_init_G1(*ka, pp.pairing);
+        element_pow_zn(*ka, *(pp.h[a]), t);
+        sk->kx.insert({a, ka});
+    }
+    // std::cout << "Waters11: Scheme Keygen Done.\n";
 }
 
 void w11::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
-    std::cout << "Waters11: Encrypt.\n";
-    utils::LSSS lsss(policy);
-    ctx->lsss_policy = &lsss;
-    // element_t s;
-    // element_init_Zr(s, pairing);
-    std::mt19937 gen(std::random_device{}());
-    std::uniform_int_distribution<> dis(1, 100);
-    int rs = dis(gen);
+    element_t tmp;
+    element_init_G1(tmp, pp.pairing);
+
+    // std::cout << "Waters11: Encrypt.\n";
+    // init lsss policy
+    ctx->lsss_policy = new utils::LSSS(&pp.pairing, policy);
+    // secret exponent s
     element_t s;
-    element_init_Zr(s, pairing);
-    element_set_si(s, rs);
-    int *shares;
-    lsss.share(rs, &shares);
-    int l = lsss.getl();
-    element_t *lambda = new element_t[l];
-    for (int i = 0; i < lsss.getl(); i++) {
-        element_init_Zr(lambda[i], pairing);
-        element_set_si(lambda[i], shares[i]);
-    }
-    element_t cm;
-    element_init_G1(cm, pairing);
-    element_t nus;
-    element_init_GT(nus, pairing);
-    element_pow_zn(nus, nu, s);
-    element_mul(cm, *(ptx.message), nus);
+    element_init_Zr(s, pp.pairing);
+    element_random(s);
     // cm = m * nu^s
-    element_t cp;
-    element_init_G1(cp, pairing);
-    element_pow_zn(cp, g, s);
-    element_t *ci = new element_t[l];
-    element_t *di = new element_t[l];
-    for (int i = 0; i < l; i++) {
+    element_init_GT(ctx->c_m, pp.pairing);
+    element_pow_zn(ctx->c_m, pp.nu, s);
+    element_mul(ctx->c_m, ctx->c_m, ptx.message);
+    // g_prime = g^s
+    element_init_G1(ctx->c_prime, pp.pairing);
+    element_pow_zn(ctx->c_prime, pp.g, s);
+    // c_i = ga^{\lambda_i} h_{\rho(i)}^{-r_i}
+    // d_i = g^{r_i}
+    ctx->c = std::vector<element_t>(ctx->lsss_policy->get_l());
+    ctx->d = std::vector<element_t>(ctx->lsss_policy->get_l());
+    auto lambda = ctx->lsss_policy->share(&s);
+    for (int i = 0; i < ctx->lsss_policy->get_l(); i++) {
         element_t ri;
-        element_init_Zr(ri, pairing);
+        element_init_Zr(ri, pp.pairing);
         element_random(ri);
+        // element_t neg_ri;
+        // element_init_Zr(neg_ri, pp.pairing);
+        // element_neg(neg_ri, ri);
         // ci
-        element_init_G1(ci[i], pairing);
-        element_pow_zn(ci[i], ga, lambda[i]);
-        element_t tmp;
-        element_init_G1(tmp, pairing);
-        element_pow_zn(tmp, h[i], ri);
-        element_mul(ci[i], ci[i], h[i]);
+        element_init_G1(ctx->c[i], pp.pairing);
+        element_pow_zn(ctx->c[i], pp.ga, *(lambda[i]));
+        element_pow_zn(tmp, *(pp.h[ctx->lsss_policy->rho_map(i)]), ri);
+        element_invert(tmp, tmp);
+        element_mul(ctx->c[i], ctx->c[i], tmp);
         // di
-        element_init_G1(di[i], pairing);
-        element_pow_zn(di[i], g, ri);
+        element_init_G1(ctx->d[i], pp.pairing);
+        element_pow_zn(ctx->d[i], pp.g, ri);
     }
-    (ctx->c) = new element_t[l + 2];
-    for (int i = 0; i < l + 2; ++i) element_init_G1((ctx->c)[i], pairing);
-    element_set((ctx->c)[0], cm);
-    element_set((ctx->c)[1], cp);
-    for (int i = 2; i < l + 2; ++i) element_set((ctx->c)[i], ci[i - 2]);
+    // std::cout << "Waters11: Scheme Encrypt Done.\n";
 }
 
-std::string w11::Decrypt(ciphertext *ctx, std::vector<std::string> attrs, secretkey *sk) {
-    auto omega = (ctx->lsss_policy)->retriveOmega(attrs);
-    element_t temp1;
-    element_init_GT(temp1, pairing);
-    pairing_apply(temp1, (ctx->c)[1], (sk->k)[0], pairing);
-    element_t temp2;
-    element_init_GT(temp2, pairing);
-    element_set1(temp2);
-    // ctx可以通过下标映射到属性
-    // 但是已知属性值如何和KeyGen中生成的密钥对应起来？
-    // -> KeyGen需要一个属性映射到下标的映射
-    // for (int i = 0; i < (sk->len) - 2; ++i) {
+void w11::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *ptx) {
+    element_t tmp_nemu;
+    element_t tmp_deno;
+    element_init_GT(tmp_nemu, pp.pairing);
+    element_init_GT(tmp_deno, pp.pairing);
+    element_t tmp_gt1;
+    element_t tmp_gt2;
+    element_init_GT(tmp_gt1, pp.pairing);
+    element_init_GT(tmp_gt2, pp.pairing);
 
-    // }
+    // std::cout << "Waters11: Decrypt.\n";
+    // attributes to omega
+    auto omega = (ctx->lsss_policy)->retriveOmega(A->attrs);
+    // e(C', K)
+    element_pairing(tmp_nemu, ctx->c_prime, sk->k);
+    // prod e(C_i, L)e(D_i, K_rho(i))
+    // retirve I
+    std::vector<int> I = ctx->lsss_policy->get_match(A->attrs);
+    element_set1(tmp_deno);
+    for (auto row : I) {
+        element_pairing(tmp_gt1, ctx->c[row], sk->l);
+        element_pairing(tmp_gt2, ctx->d[row], *(sk->kx[ctx->lsss_policy->rho_map(row)]));
+        element_mul(tmp_gt1, tmp_gt1, tmp_gt2);
+        element_pow_zn(tmp_gt1, tmp_gt1, *(omega[row]));
+        element_mul(tmp_deno, tmp_deno, tmp_gt1);
+    }
+    element_invert(tmp_deno, tmp_deno);
+    element_mul(tmp_nemu, tmp_nemu, tmp_deno);
+    element_invert(tmp_nemu, tmp_nemu);
+    element_init_GT(ptx->message, pp.pairing);
+    element_mul(ptx->message, tmp_nemu, ctx->c_m);
+
+    // std::cout << "Waters11: Scheme Decrypt Done.\n";
+}
+
+w11::~w11() {
 }
 
 } // namespace crypto

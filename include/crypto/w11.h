@@ -3,32 +3,75 @@
 
 #include <memory>
 #include <string>
-#include "crypto/cpabe.h"
+#include <pbc/pbc.h>
+#include <memory>
+#include <vector>
+#include <string>
+
+#include "utils/lsss.h"
 
 namespace crypto {
 
-class w11 : public cpabe {
+class w11 {
 private:
-    element_t g;
-    element_t a;
-    element_t alpha;
-    element_t nu;
-    element_t ga;
-    int lenU;
-    element_t *h;
+    struct public_parameter {
+        pairing_t pairing;
+        element_t g;
+        element_t a;
+        element_t alpha;
+        element_t nu;
+        element_t ga;
+        std::unordered_map<std::string, element_t*> h;
+    } pp;
+    
+    struct master_secretkey {
+        element_t alpha;
+    } msk;
 
 public:
-    w11(std::string &param): cpabe(param) {}
-    ~w11() override;
+    struct attribute_set {
+        std::vector<std::string> attrs;
+    };
 
-    void Setup() override;
-    void Setup(int U);
+    struct secretkey {
+        element_t k;
+        element_t l;
+        std::unordered_map<std::string, element_t*> kx;
+    };
 
-    void Keygen(std::vector<std::string> attrs) override;
+    struct plaintext {
+        element_t message;
+    };
 
-    void Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) override;
+    struct ciphertext {
+        utils::LSSS *lsss_policy;
+        element_t c_m;
+        element_t c_prime;
+        std::vector<element_t> c;
+        std::vector<element_t> d;
+        std::unordered_map<std::string, int> attr_to_idx;
+    };
+    // function as Setup
+    w11(std::string &param, std::vector<std::string> Universe);
 
-    std::string Decrypt(ciphertext *ctx, std::vector<std::string> attrs, secretkey *sk) override;
+    void Keygen(attribute_set *A, secretkey *sk);
+
+    void Encrypt(plaintext ptx, std::string policy, ciphertext *ctx);
+
+    void Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *ptx);
+
+    // encapsulate message
+    void Encaps(int message, plaintext *ptx) {
+        element_init_GT(ptx->message, pp.pairing);
+        element_set_si(ptx->message, message);
+    }
+
+    void RandomEncaps(plaintext *ptx) {
+        element_init_GT(ptx->message, pp.pairing);
+        element_random(ptx->message);
+    }
+
+    ~w11();
 };
 
 } // namespace crypto
