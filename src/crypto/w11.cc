@@ -19,12 +19,12 @@ w11::w11(std::string &param, std::vector<std::string> Universe) {
     element_init_Zr(pp.alpha, pp.pairing);
     element_random(pp.alpha);
     // g_pub
-    element_init_G1(pp.g_pub, pp.pairing);
-    element_pow_zn(pp.g_pub, pp.g, pp.alpha);
+    element_init_G1(g_pub, pp.pairing);
+    element_pow_zn(g_pub, pp.g, pp.alpha);
     // nu
     element_init_GT(pp.nu, pp.pairing);
     // pairing_apply(pp.nu, pp.g, pp.g, pp.pairing);
-    element_pairing(pp.nu, pp.g_pub, pp.g);
+    element_pairing(pp.nu, g_pub, pp.g);
     // element_pow_zn(pp.nu, pp.nu, pp.alpha);
     // g^a
     element_init_G1(pp.ga, pp.pairing);
@@ -50,7 +50,7 @@ void w11::Keygen(attribute_set *A, secretkey *sk) {
     element_random(t);
     // K = g^alpha g^at
     element_init_G1(sk->k, pp.pairing);
-    element_set(sk->k, pp.g_pub);
+    element_set(sk->k, g_pub);
     element_pow_zn(tmp, pp.ga, t);
     element_mul(sk->k, sk->k, tmp);
     // L = g^t

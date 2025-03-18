@@ -19,7 +19,6 @@ private:
         element_t g;
         element_t a;
         element_t alpha;
-        element_t g_pub;
         element_t nu;
         element_t ga;
         std::unordered_map<std::string, element_t*> h;
@@ -29,6 +28,7 @@ private:
         element_t alpha;
     } msk;
 
+    element_t g_pub;
 public:
     struct attribute_set {
         std::vector<std::string> attrs;
