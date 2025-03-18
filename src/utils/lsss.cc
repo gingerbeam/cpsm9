@@ -231,7 +231,7 @@ void LSSS::solve(int row_n, int col_n, std::vector<element_t*> &omega) {
         element_set_si(*(aug[i][col_n]), ((i == 0) ? 1 : 0));
     }
 
-    std::cout << "DEBUG probe solve - augment - OK\n";
+    // std::cout << "DEBUG probe solve - augment - OK\n";
 
     int rank = 0;
     std::vector<int> pivot_cols(row_n, -1);
@@ -268,14 +268,14 @@ void LSSS::solve(int row_n, int col_n, std::vector<element_t*> &omega) {
         pivot_cols[rank] = col;
         ++rank;
     }
-    std::cout << "DEBUG probe solve - pivot - OK\n";
+    // std::cout << "DEBUG probe solve - pivot - OK\n";
     // check for conflicts
     for (int row = rank; row < row_n; ++row) {
         if (!element_is0(*(aug[row][col_n]))) {
             throw std::runtime_error("No solution"); // 无解，返回空
         }
     }
-    std::cout << "DEBUG probe solve - no solution - OK\n";
+    // std::cout << "DEBUG probe solve - no solution - OK\n";
     // // solution vector
     // std::vector<element_t*> x(col_n + 1);
     // for (int i = 0; i <= col_n; ++i) {
@@ -283,7 +283,7 @@ void LSSS::solve(int row_n, int col_n, std::vector<element_t*> &omega) {
     //     element_init_Zr(*(x[i]), *pairing);
     //     element_set0(*(x[i]));
     // }
-    std::cout << "DEBUG probe solve - solution vector - OK\n";
+    // std::cout << "DEBUG probe solve - solution vector - OK\n";
     // find special solution (reverse)
     for (int row = rank - 1; row >= 0; --row) {
         int col = pivot_cols[row];
@@ -296,7 +296,7 @@ void LSSS::solve(int row_n, int col_n, std::vector<element_t*> &omega) {
         }
         element_set(*(omega[col]), val);
     }
-    std::cout << "DEBUG probe solve - special solution - OK\n";
+    // std::cout << "DEBUG probe solve - special solution - OK\n";
 
     // element_clear(tmp);
     // return x;
@@ -325,7 +325,7 @@ void LSSS::reconstruct(std::vector<std::string> aSet, std::vector<element_t*> sh
     solve(n, S.size(), omega);
     // auto omega = solve(n, S.size());
 
-    std::cout << "DEBUG probe reconstruct - solve - OK\n";
+    // std::cout << "DEBUG probe reconstruct - solve - OK\n";
 
     for (int i = 0; i < S.size(); ++i) {
         element_mul(tmp, *(shares[row_mapping[i]]), *(omega[i]));
@@ -333,7 +333,7 @@ void LSSS::reconstruct(std::vector<std::string> aSet, std::vector<element_t*> sh
     }
 }
 
-std::unordered_map<std::string, element_t*> LSSS::retriveOmega(std::vector<std::string> aSet) {
+std::unordered_map<int, element_t*> LSSS::retriveOmega(std::vector<std::string> aSet) {
     // std::vector<int> S; // 存储匹配的行号
     std::unordered_map<int, int> row_mapping; // 小矩阵行号与原始行号的映射
     // 匹配属性集合，找到 rho(i) 在 aSet 中出现的行号
@@ -351,10 +351,11 @@ std::unordered_map<std::string, element_t*> LSSS::retriveOmega(std::vector<std::
         element_init_Zr(*(omega[i]), *pairing);
     }
     solve(n, S.size(), omega);
-    std::unordered_map<std::string, element_t*> omega_map;
+    std::unordered_map<int, element_t*> omega_map;
     for (int i = 0; i < S.size(); ++i) {
         // idx of original rho to S
-        omega_map[parser->itoa_map[parser->rtoi_map[row_mapping[i]]]] = (omega[i]);
+        omega_map[S[i]] = (omega[i]);
+        // omega_map[parser->itoa_map[parser->rtoi_map[row_mapping[i]]]] = (omega[i]);
     }
     return omega_map;
 }
