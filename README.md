@@ -41,6 +41,9 @@ tbd.
 ## Schemes
 
 [x] our cp sm9 (small universe & larger universe)
+
 [x] Waters11 (small universe)
+
 [x] rw13 (large universe)
+
 [] Shi et al. CP-ABE (small universe)

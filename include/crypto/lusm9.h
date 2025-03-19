@@ -59,6 +59,7 @@ public:
         std::unordered_map<std::string, int> attr_to_idx;
     };
     void Hash(element_t &m, element_t &res);
+    void HtoZ(std::string &m, element_t &res);
 
     // function as Setup
     lusm9(std::string &param);

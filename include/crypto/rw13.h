@@ -32,6 +32,7 @@ private:
     } msk;
 
     element_t g_pub;
+    void HtoZ(std::string &m, element_t &res);
 public:
     struct attribute_set {
         std::vector<std::string> attrs;

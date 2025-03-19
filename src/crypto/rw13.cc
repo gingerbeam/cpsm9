@@ -8,7 +8,7 @@
 
 namespace crypto {
 
-void HtoZ(std::string &m, element_t &res) {
+void rw13::HtoZ(std::string &m, element_t &res) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
@@ -16,12 +16,6 @@ void HtoZ(std::string &m, element_t &res) {
     SHA256_Update(&sha256, bytes, m.size());
     SHA256_Final(hash, &sha256);
     element_from_hash(res, hash, SHA256_DIGEST_LENGTH);
-    // signed long int hash_int = 0;
-    // for (int i = 0; i < 8; ++i) {
-    //     hash_int = (hash_int << 8) | hash[i];
-    // }
-
-    // element_set_si(res, hash_int);
 }
 
 rw13::rw13(std::string &param) {

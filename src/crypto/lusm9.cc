@@ -19,7 +19,7 @@ void lusm9::Hash(element_t &m, element_t &res) {
     element_from_hash(res, hash, SHA256_DIGEST_LENGTH);
 }
 
-void HtoZ(std::string &m, element_t &res) {
+void lusm9::HtoZ(std::string &m, element_t &res) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
     SHA256_CTX sha256;
     SHA256_Init(&sha256);

@@ -9,8 +9,6 @@
 namespace crypto {
 
 void susm9::Hash(element_t &m, element_t &res) {
-    // utils::Hm(m, res);
-    // 计算SHA-256哈希
     unsigned char hash[SHA256_DIGEST_LENGTH];
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
