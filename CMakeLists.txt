@@ -24,50 +24,6 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON)
 FetchContent_MakeAvailable(googletest)
 
-# add_executable(w11_test
-#         test/w11_test.cc
-#         src/crypto/w11.cc
-#         src/utils/lsss.cc
-#         src/utils/hash.cc
-#         src/curve/params.cc)
-        
-# target_link_libraries(w11_test gtest pbc OpenSSL::SSL
-#         "/lib/x86_64-linux-gnu/libgmpxx.a"
-#         "/lib/x86_64-linux-gnu/libgmp.a")
-
-# add_executable(susm9_test
-#         test/susm9_test.cc
-#         src/crypto/susm9.cc
-#         src/utils/lsss.cc
-#         src/utils/hash.cc
-#         src/curve/params.cc)
-        
-# target_link_libraries(susm9_test gtest pbc OpenSSL::SSL
-#         "/lib/x86_64-linux-gnu/libgmpxx.a"
-#         "/lib/x86_64-linux-gnu/libgmp.a")
-
-# add_executable(rw13_test
-#         test/rw13_test.cc
-#         src/crypto/rw13.cc
-#         src/utils/lsss.cc
-#         src/utils/hash.cc
-#         src/curve/params.cc)
-        
-# target_link_libraries(rw13_test gtest pbc OpenSSL::SSL
-#         "/lib/x86_64-linux-gnu/libgmpxx.a"
-#         "/lib/x86_64-linux-gnu/libgmp.a")
-
-# add_executable(lusm9_test
-#         test/lusm9_test.cc
-#         src/crypto/lusm9.cc
-#         src/utils/lsss.cc
-#         src/utils/hash.cc
-#         src/curve/params.cc)
-        
-# target_link_libraries(lusm9_test gtest pbc OpenSSL::SSL
-#         "/lib/x86_64-linux-gnu/libgmpxx.a"
-#         "/lib/x86_64-linux-gnu/libgmp.a")
-
 add_executable(scheme_test
         test/scheme_test.cc
         src/crypto/w11.cc
@@ -75,7 +31,6 @@ add_executable(scheme_test
         src/crypto/susm9.cc
         src/crypto/lusm9.cc
         src/utils/lsss.cc
-        src/utils/hash.cc
         src/curve/params.cc)
         
 target_link_libraries(scheme_test gtest pbc OpenSSL::SSL

@@ -14,21 +14,20 @@ w11::w11(std::string &param, std::vector<std::string> Universe) {
     // rest of pp
     element_init_G1(pp.g, pp.pairing);
     element_random(pp.g);
-    element_init_Zr(pp.a, pp.pairing);
-    element_random(pp.a);
-    element_init_Zr(pp.alpha, pp.pairing);
-    element_random(pp.alpha);
-    // g_pub
-    element_init_G1(g_pub, pp.pairing);
-    element_pow_zn(g_pub, pp.g, pp.alpha);
+    // sk->alpha
+    element_init_Zr(msk.alpha, pp.pairing);
+    element_random(msk.alpha);
     // nu
     element_init_GT(pp.nu, pp.pairing);
-    // pairing_apply(pp.nu, pp.g, pp.g, pp.pairing);
-    element_pairing(pp.nu, g_pub, pp.g);
-    // element_pow_zn(pp.nu, pp.nu, pp.alpha);
+    element_pairing(pp.nu, pp.g, pp.g);
+    element_pow_zn(pp.nu, pp.nu, msk.alpha);
+    // secret randomness a
+    element_t a;
+    element_init_Zr(a, pp.pairing);
+    element_random(a);
     // g^a
     element_init_G1(pp.ga, pp.pairing);
-    element_pow_zn(pp.ga, pp.g, pp.a);
+    element_pow_zn(pp.ga, pp.g, a);
     // set up attribute parameters
     for (auto x : Universe) {
         element_t *hx = (element_t *)(new element_t);
@@ -50,7 +49,7 @@ void w11::Keygen(attribute_set *A, secretkey *sk) {
     element_random(t);
     // K = g^alpha g^at
     element_init_G1(sk->k, pp.pairing);
-    element_set(sk->k, g_pub);
+    element_pow_zn(sk->k, pp.g, msk.alpha);
     element_pow_zn(tmp, pp.ga, t);
     element_mul(sk->k, sk->k, tmp);
     // L = g^t

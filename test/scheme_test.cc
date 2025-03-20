@@ -68,11 +68,49 @@ TEST(susm9Test, RandomizeTest) {
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
 }
 
+TEST(susm9Test, SymmetricTest) {
+    CurveParams curve;
+    std::vector<std::string> attrs = {"A", "B", "C"};
+    std::string policy = "A and B and C";
+    crypto::susm9 scheme(curve.a_param, attrs);
+    crypto::susm9::attribute_set A;
+    A.attrs = attrs;
+    crypto::susm9::secretkey sk;
+    scheme.Keygen(&A, &sk);
+    crypto::susm9::plaintext ptx; // wild ptr!!!
+    // scheme.Encaps(42, &ptx);
+    scheme.RandomEncaps(&ptx);
+    crypto::susm9::ciphertext ctx;
+    scheme.Encrypt(ptx, policy, &ctx);
+    crypto::susm9::plaintext res;
+    scheme.Decrypt(&ctx, &A, &sk, &res);
+    EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+}
+
 TEST(lusm9Test, RandomizeTest) {
     CurveParams curve;
     std::vector<std::string> attrs = {"A", "B", "C"};
     std::string policy = "A and B and C";
     crypto::lusm9 scheme(curve.sm9_param);
+    crypto::lusm9::attribute_set A;
+    A.attrs = attrs;
+    crypto::lusm9::secretkey sk;
+    scheme.Keygen(&A, &sk);
+    crypto::lusm9::plaintext ptx; // wild ptr!!!
+    // scheme.Encaps(42, &ptx);
+    scheme.RandomEncaps(&ptx);
+    crypto::lusm9::ciphertext ctx;
+    scheme.Encrypt(ptx, policy, &ctx);
+    crypto::lusm9::plaintext res;
+    scheme.Decrypt(&ctx, &A, &sk, &res);
+    EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+}
+
+TEST(lusm9Test, SymmetricTest) {
+    CurveParams curve;
+    std::vector<std::string> attrs = {"A", "B", "C"};
+    std::string policy = "A and B and C";
+    crypto::lusm9 scheme(curve.a_param);
     crypto::lusm9::attribute_set A;
     A.attrs = attrs;
     crypto::lusm9::secretkey sk;

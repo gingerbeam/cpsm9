@@ -13,23 +13,19 @@
 namespace crypto {
 
 class w11 {
-private:
+private:    
+    struct master_secretkey {
+        element_t alpha;
+    } msk;
+public:
     struct public_parameter {
         pairing_t pairing;
         element_t g;
-        element_t a;
-        element_t alpha;
         element_t nu;
         element_t ga;
         std::unordered_map<std::string, element_t*> h;
     } pp;
     
-    struct master_secretkey {
-        element_t alpha;
-    } msk;
-
-    element_t g_pub;
-public:
     struct attribute_set {
         std::vector<std::string> attrs;
     };
