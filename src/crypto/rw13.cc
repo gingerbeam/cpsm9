@@ -3,7 +3,6 @@
 #include <random>
 #include "crypto/rw13.h"
 
-// #include "utils/hash.h"
 #include <openssl/sha.h>
 
 namespace crypto {
@@ -24,6 +23,11 @@ rw13::rw13(std::string &param) {
     pbc_param_t par;
     pbc_param_init_set_str(par, param.c_str());
     pairing_init_pbc_param(pp.pairing, par);
+    // init element_t
+    element_init_G1(tmp, pp.pairing);
+    // alpha
+    element_init_Zr(msk.alpha, pp.pairing);
+    element_random(msk.alpha);
     // g
     element_init_G1(pp.g, pp.pairing);
     element_random(pp.g);
@@ -39,25 +43,14 @@ rw13::rw13(std::string &param) {
     // v
     element_init_G1(pp.v, pp.pairing);
     element_random(pp.v);
-    // alpha
-    element_init_Zr(pp.alpha, pp.pairing);
-    element_random(pp.alpha);
-    // g_pub
-    element_init_G1(g_pub, pp.pairing);
-    element_pow_zn(g_pub, pp.g, pp.alpha);
     // nu
     element_init_GT(pp.nu, pp.pairing);
-    // pairing_apply(pp.nu, pp.g, pp.g, pp.pairing);
-    // element_pairing(pp.nu, g_pub, pp.g);
     element_pairing(pp.nu, pp.g, pp.g);
-    element_pow_zn(pp.nu, pp.nu, pp.alpha);
+    element_pow_zn(pp.nu, pp.nu, msk.alpha);
     // std::cout << "RW13: Scheme Setup Done.\n";
 }
 
 void rw13::Keygen(attribute_set *A, secretkey *sk) {
-    element_t tmp;
-    element_init_G1(tmp, pp.pairing);
-
     // std::cout << "RW13: Keygen.\n";
     // randomness
     element_t r;
@@ -65,9 +58,7 @@ void rw13::Keygen(attribute_set *A, secretkey *sk) {
     element_random(r);
     // K_0 = g^alpha w^r
     element_init_G1(sk->k0, pp.pairing);
-    // element_set(sk->k0, g_pub);
-    element_set(sk->k0, pp.g);
-    element_pow_zn(sk->k0, sk->k0, pp.alpha);
+    element_pow_zn(sk->k0, pp.g, msk.alpha);
     element_pow_zn(tmp, pp.w, r);
     element_mul(sk->k0, sk->k0, tmp);
     // K_1 = g^r
@@ -101,13 +92,11 @@ void rw13::Keygen(attribute_set *A, secretkey *sk) {
         
         sk->kx3.insert({a, ka3});
     }
+    element_clear(r);
     // std::cout << "RW13: Scheme Keygen Done.\n";
 }
 
 void rw13::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
-    element_t tmp;
-    element_init_G1(tmp, pp.pairing);
-
     // std::cout << "RW13: Encrypt.\n";
     // init lsss policy
     ctx->lsss_policy = new utils::LSSS(&pp.pairing, policy);
@@ -122,9 +111,7 @@ void rw13::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
     // c_0 = g^s
     element_init_G1(ctx->c_0, pp.pairing);
     element_pow_zn(ctx->c_0, pp.g, s);
-    // c_i_1 = w^{lambda_i} v^{ti}
-    // c_i_2 = (u^{rho(i)}h)^{-ti}
-    // c_i_3 = g^{ti}
+    // c_i_1, c_i_2, c_i_3
     ctx->ci1 = std::vector<element_t>(ctx->lsss_policy->get_l());
     ctx->ci2 = std::vector<element_t>(ctx->lsss_policy->get_l());
     ctx->ci3 = std::vector<element_t>(ctx->lsss_policy->get_l());
@@ -135,16 +122,15 @@ void rw13::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
         element_t ti;
         element_init_Zr(ti, pp.pairing);
         element_random(ti);
-        // c_i_1
+        // c_i_1 = w^{lambda_i} v^{ti}
         element_init_G1(ctx->ci1[i], pp.pairing);
         element_pow_zn(ctx->ci1[i], pp.w, *(lambda[i]));
         element_pow_zn(tmp, pp.v, ti);
         element_mul(ctx->ci1[i], ctx->ci1[i], tmp);
-        // c_i_3
+        // c_i_3 = g^{ti}
         element_init_G1(ctx->ci3[i], pp.pairing);
         element_pow_zn(ctx->ci3[i], pp.g, ti);
-        // c_i_2
-        // element_neg(ti, ti); // ti -> -ti
+        // c_i_2 = (u^{rho(i)}h)^{-ti}
         element_init_G1(ctx->ci2[i], pp.pairing);
         std::string rhoi = ctx->lsss_policy->rho_map(i);
         HtoZ(rhoi, _rhoi);
@@ -153,6 +139,7 @@ void rw13::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
         element_pow_zn(ctx->ci2[i], ctx->ci2[i], ti);
         element_invert(ctx->ci2[i], ctx->ci2[i]);
     }
+    element_clear(s);
     // std::cout << "RW13: Scheme Encrypt Done.\n";
 }
 
@@ -194,11 +181,17 @@ void rw13::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *
     element_invert(tmp_nemu, tmp_nemu);
     element_init_GT(ptx->message, pp.pairing);
     element_mul(ptx->message, tmp_nemu, ctx->c_m);
-
+    // clear temporary element_t
+    element_clear(tmp_nemu);
+    element_clear(tmp_deno);
+    element_clear(tmp_gt1);
+    element_clear(tmp_gt2);
+    element_clear(tmp_gt3);
     // std::cout << "RW13: Scheme Decrypt Done.\n";
 }
 
 rw13::~rw13() {
+    element_clear(tmp);
 }
 
 } // namespace crypto

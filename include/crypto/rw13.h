@@ -13,7 +13,16 @@
 namespace crypto {
 
 class rw13 {
-private:
+private:    
+    struct master_secretkey {
+        element_t alpha;
+    } msk;
+
+    void HtoZ(std::string &m, element_t &res);
+public:
+    // temporary element_t
+    element_t tmp;
+    
     // pp = {BP, g, u, h, w, v, nu}
     struct public_parameter {
         pairing_t pairing;
@@ -22,18 +31,9 @@ private:
         element_t h;
         element_t w;
         element_t v;
-        element_t alpha;
         element_t nu; // nu = e(g,g)^alpha
-        // std::unordered_map<std::string, element_t*> h;
     } pp;
-    
-    struct master_secretkey {
-        element_t alpha;
-    } msk;
 
-    element_t g_pub;
-    void HtoZ(std::string &m, element_t &res);
-public:
     struct attribute_set {
         std::vector<std::string> attrs;
     };

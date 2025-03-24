@@ -18,6 +18,9 @@ private:
         element_t alpha;
     } msk;
 public:
+    // temporary element_t
+    element_t tmp; // G1
+
     struct public_parameter {
         pairing_t pairing;
         element_t g;
@@ -25,7 +28,7 @@ public:
         element_t ga;
         std::unordered_map<std::string, element_t*> h;
     } pp;
-    
+
     struct attribute_set {
         std::vector<std::string> attrs;
     };

@@ -34,16 +34,16 @@ susm9::susm9(std::string &param, std::vector<std::string> Universe) {
     element_init_G2(pp.u, pp.pairing);
     element_random(pp.u);
     // alpha
-    element_init_Zr(pp.alpha, pp.pairing);
-    element_random(pp.alpha);
+    element_init_Zr(msk.alpha, pp.pairing);
+    element_random(msk.alpha);
     // g_pub
     element_init_G1(pp.g_pub, pp.pairing);
-    element_pow_zn(pp.g_pub, pp.g1, pp.alpha);
+    element_pow_zn(pp.g_pub, pp.g1, msk.alpha);
     // nu
     element_init_GT(pp.nu, pp.pairing);
     // pairing_apply(pp.nu, pp.g, pp.g, pp.pairing);
     element_pairing(pp.nu, pp.g_pub, pp.g2);
-    // element_pow_zn(pp.nu, pp.nu, pp.alpha);
+    // element_pow_zn(pp.nu, pp.nu, msk.alpha);
     // set up attribute parameters
     for (auto x : Universe) {
         element_t *hx = (element_t *)(new element_t);
@@ -55,6 +55,7 @@ susm9::susm9(std::string &param, std::vector<std::string> Universe) {
     element_init_Zr(HN, pp.pairing);
     element_t N;
     element_init_Zr(N, pp.pairing);
+    element_random(N);
     Hash(N, HN);
     // Hash(*gid, HN);
     // std::cout << "SUSM9: Scheme Setup Done.\n";
@@ -72,7 +73,7 @@ void susm9::Keygen(attribute_set *A, secretkey *sk) {
     // HN+alpha
     element_t HN_alpha;
     element_init_Zr(HN_alpha, pp.pairing);
-    element_add(HN_alpha, HN, pp.alpha);
+    element_add(HN_alpha, HN, msk.alpha);
     element_invert(HN_alpha, HN_alpha);
     // randomness
     element_t t;
@@ -80,7 +81,7 @@ void susm9::Keygen(attribute_set *A, secretkey *sk) {
     element_random(t);
     // K = g2^{alpha/HN+alpha} u^{t/HN+alpha}
     element_init_G2(sk->k, pp.pairing);
-    element_mul(tmp, pp.alpha, HN_alpha);
+    element_mul(tmp, msk.alpha, HN_alpha);
     element_pow_zn(sk->k, pp.g2, tmp);
     element_mul(tmp, t, HN_alpha);
     element_pow_zn(tmp2, pp.u, tmp);

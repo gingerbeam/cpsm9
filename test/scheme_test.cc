@@ -2,6 +2,7 @@
 #include "crypto/rw13.h"
 #include "crypto/susm9.h"
 #include "crypto/lusm9.h"
+#include "crypto/sm9.h"
 #include <gtest/gtest.h>
 #include <vector>
 #include <iostream>
@@ -122,6 +123,38 @@ TEST(lusm9Test, SymmetricTest) {
     scheme.Encrypt(ptx, policy, &ctx);
     crypto::lusm9::plaintext res;
     scheme.Decrypt(&ctx, &A, &sk, &res);
+    EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+}
+
+TEST(sm9Tetst, RandomizeTest) {
+    CurveParams curve;
+    crypto::sm9 scheme(curve.sm9_param);
+    crypto::sm9::secretkey sk;
+    std::string id = "test";
+    scheme.Keygen(id, &sk);
+    crypto::sm9::plaintext ptx; // wild ptr!!!
+    // scheme.Encaps(42, &ptx);
+    scheme.RandomEncaps(&ptx);
+    crypto::sm9::ciphertext ctx;
+    scheme.Encrypt(ptx, id, &ctx);
+    crypto::sm9::plaintext res;
+    scheme.Decrypt(&ctx, &sk, &res);
+    EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+}
+
+TEST(sm9Tetst, SymmmetricTest) {
+    CurveParams curve;
+    crypto::sm9 scheme(curve.a_param);
+    crypto::sm9::secretkey sk;
+    std::string id = "test";
+    scheme.Keygen(id, &sk);
+    crypto::sm9::plaintext ptx; // wild ptr!!!
+    // scheme.Encaps(42, &ptx);
+    scheme.RandomEncaps(&ptx);
+    crypto::sm9::ciphertext ctx;
+    scheme.Encrypt(ptx, id, &ctx);
+    crypto::sm9::plaintext res;
+    scheme.Decrypt(&ctx, &sk, &res);
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
 }
 
