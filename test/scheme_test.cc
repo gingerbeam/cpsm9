@@ -3,6 +3,8 @@
 #include "crypto/susm9.h"
 #include "crypto/lusm9.h"
 #include "crypto/sm9.h"
+#include "crypto/shi19.h"
+#include "crypto/ji21.h"
 #include <gtest/gtest.h>
 #include <vector>
 #include <iostream>
@@ -156,6 +158,78 @@ TEST(sm9Tetst, SymmmetricTest) {
     crypto::sm9::plaintext res;
     scheme.Decrypt(&ctx, &sk, &res);
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+}
+
+TEST(Shi19Test, RandomizeTest) {
+    CurveParams curve;
+    std::vector<std::string> U = {"A", "B", "C"};
+    std::vector<std::vector<std::string>> access_structure = {
+        {"A", "B"},
+        {"A", "C"},
+        {"A", "B", "C"}
+    };
+    std::vector<std::string> attrs = {"A", "B"};
+    crypto::shi19 scheme(curve.sm9_param, U);
+    crypto::shi19::secretkey sk;
+    scheme.shi19Keygen(attrs, &sk);
+    crypto::shi19::plaintext ptx;
+    scheme.RandomEncaps(&ptx);
+    crypto::shi19::abe_ciphertext ctx;
+    scheme.shi19Encrypt(ptx, access_structure, &ctx);
+    crypto::shi19::plaintext res;
+    scheme.shi19Decrypt(&ctx, attrs, &sk, &res);
+    EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+}
+
+TEST(Shi19Test, SymmetricTest) {
+    CurveParams curve;
+    std::vector<std::string> U = {"A", "B", "C"};
+    std::vector<std::vector<std::string>> access_structure = {
+        {"A", "B"},
+        {"A", "C"},
+        {"A", "B", "C"}
+    };
+    std::vector<std::string> attrs = {"A", "B"};
+    crypto::shi19 scheme(curve.a_param, U);
+    crypto::shi19::secretkey sk;
+    scheme.shi19Keygen(attrs, &sk);
+    crypto::shi19::plaintext ptx;
+    scheme.RandomEncaps(&ptx);
+    crypto::shi19::abe_ciphertext ctx;
+    scheme.shi19Encrypt(ptx, access_structure, &ctx);
+    crypto::shi19::plaintext res;
+    scheme.shi19Decrypt(&ctx, attrs, &sk, &res);
+    EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+}
+
+TEST(ji21Test, RandomizeTest) {
+    CurveParams curve;
+    crypto::ji21 scheme(curve.sm9_param);
+    std::vector<std::string> user_attrs = {"A", "B", "C"};
+    ji21::ji21Prv* prv = scheme.ji21_keygen(user_attrs);
+    std::string policy = "A and B and C";
+    crypto::ji21::plaintext ptx; // wild ptr!!!
+    // scheme.Encaps(42, &ptx);
+    scheme.RandomEncaps(&ptx);
+    ji21::ji21Cph* cph = scheme.ji21_enc(policy, &ptx);
+    ji21::ji21ElementBoolean* result = scheme.ji21_dec(prv, cph);
+    EXPECT_TRUE(result->b);
+    EXPECT_TRUE(!element_cmp(result->e, ptx.message));
+}
+
+TEST(ji21Test, SymmetricTest) {
+    CurveParams curve;
+    crypto::ji21 scheme(curve.a_param);
+    std::vector<std::string> user_attrs = {"A", "B", "C"};
+    ji21::ji21Prv* prv = scheme.ji21_keygen(user_attrs);
+    std::string policy = "A and B and C";
+    crypto::ji21::plaintext ptx; // wild ptr!!!
+    // scheme.Encaps(42, &ptx);
+    scheme.RandomEncaps(&ptx);
+    ji21::ji21Cph* cph = scheme.ji21_enc(policy, &ptx);
+    ji21::ji21ElementBoolean* result = scheme.ji21_dec(prv, cph);
+    EXPECT_TRUE(result->b);
+    EXPECT_TRUE(!element_cmp(result->e, ptx.message));
 }
 
 int main() {

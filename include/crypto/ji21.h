@@ -15,9 +15,9 @@ void element_from_string(element_t h, const std::string& s);
 
 class ji21 {
 private:
-element_t debug_r1;
-element_t debug_r2;
 element_t debug_s;
+element_t debug_r;
+element_t debug_alpha;
 element_t debug_gt1;
 element_t debug_gt2;
 public:
@@ -35,14 +35,14 @@ struct public_parameter {
 } pp;
 
 struct master_secretkey {
-    element_t s;
-    element_t t;
+    element_t alpha;
+    element_t beta;
 } msk;
 
 struct attribute_key {
-    std::string attr;    // 属性名
-    element_t k1;         // D_j =  ∈ G_2
-    element_t k2;        // D_j' = g^r_j ∈ G_1
+    std::string attr;
+    element_t k1; // k1 = ((p2)^r2 * (h1j)^mj)^{1/t} \in G_2
+    element_t k2; // k2 = p1^mj \in G_1
 };
 
 struct ji21Prv {
@@ -60,15 +60,15 @@ struct ji21Policy {
     std::string attr;     // 属性名（叶子节点）
     ji21Polynomial* q;  // 多项式 q_x
     std::vector<ji21Policy*> children; // 子节点
-    element_t c;          // 密文CT中C_y = g^{q_y(0)} ∈ G_0
-    element_t cp;         // 密文CT中C_y' = H(att(y))^{q_y(0)} ∈ G_0
+    element_t c;          // C_y = pk2^{q_y(0)} ∈ G_1
+    element_t cp;         // C_y' = H(att(y))^{q_y(0)} ∈ G_2
     bool satisfiable;     // 用于解密时是否满足条件
     std::vector<int> satl;// 满足条件的子节点索引列表: 从1开始...
 };
 
 struct ji21Cph {
-    element_t c1; // c1 = (p1^HN pk1)^r1
-    element_t c2; // c2 = M e(p1, p2)^{s r1}
+    element_t c1; // c1 = (p1^HN pk1)^r1 \in G_1
+    element_t c2; // c2 = M e(p1, p2)^{s r1} \in G_2
     ji21Policy* p;  // 访问策略的根节点
 };
 
@@ -79,7 +79,7 @@ struct ji21ElementBoolean {
 
 ji21(std::string &param);
 
-ji21Prv* ji21_keygen(const std::vector<std::string>& attrs);
+ji21Prv* ji21_keygen(std::vector<std::string>& attrs);
 
 ji21Cph* ji21_enc(const std::string& policy_str, plaintext *ptx);
 
@@ -99,6 +99,16 @@ void Encaps(int message, plaintext *ptx) {
 void RandomEncaps(plaintext *ptx) {
     element_init_GT(ptx->message, pp.pairing);
     element_random(ptx->message);
+}
+
+// 打印策略树（用于调试）
+static void print_policy_tree(ji21Policy* p, int level) {
+    for (int i = 0; i < level; ++i)
+        std::cout << "  ";
+    std::cout << "Node: k = " << p->k << ", attr = " << p->attr << std::endl;
+    for (const auto& child : p->children) {
+        print_policy_tree(child, level + 1);
+    }
 }
 };
 }
