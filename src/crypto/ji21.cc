@@ -43,79 +43,80 @@ void element_from_string(element_t h, const std::string& s) {
     element_from_hash(h, digest, SHA_DIGEST_LENGTH);
 }
 
-void ji21::ji21_setup(public_parameter* pp, master_secretkey* msk) {
-    element_t alpha, beta_inv;
-    CurveParams curve;
+ji21::ji21(std::string &param) {
     // init pairing
     pbc_param_t par;
-    pbc_param_init_set_str(par, curve.a_param.c_str());
-    pairing_init_pbc_param(pp->pairing, par);
+    pbc_param_init_set_str(par, param.c_str());
+    pairing_init_pbc_param(pp.pairing, par);
     // init msk
-    element_init_Zr(msk->s, pp->pairing);
-    element_random(msk->s);
-    element_init_Zr(msk->t, pp->pairing);
-    element_random(msk->t);
+    element_init_Zr(msk.s, pp.pairing);
+    element_random(msk.s);
+    element_init_Zr(debug_s, pp.pairing);
+    element_set(debug_s, msk.s);
+    element_init_Zr(msk.t, pp.pairing);
+    element_random(msk.t);
     // public parameters
     // generators
-    element_init_G1(pp->p1, pp->pairing);
-    element_random(pp->p1);
-    element_init_G2(pp->p2, pp->pairing);
-    element_random(pp->p2);
+    element_init_G1(pp.p1, pp.pairing);
+    element_random(pp.p1);
+    element_init_G2(pp.p2, pp.pairing);
+    element_random(pp.p2);
     // pk1 & pk2
-    element_init_G1(pp->pk1, pp->pairing);
-    element_pow_zn(pp->pk1, pp->p1, msk->s);
-    element_init_G1(pp->pk2, pp->pairing);
-    element_pow_zn(pp->pk2, pp->p1, msk->t);
+    element_init_G1(pp.pk1, pp.pairing);
+    element_pow_zn(pp.pk1, pp.p1, msk.s);
+    element_init_G1(pp.pk2, pp.pairing);
+    element_pow_zn(pp.pk2, pp.p1, msk.t);
     // generate HN
-    element_init_Zr(pp->HN, pp->pairing);
+    element_init_Zr(pp.HN, pp.pairing);
     element_t N;
-    element_init_Zr(N, pp->pairing);
+    element_init_Zr(N, pp.pairing);
     element_random(N);
-    Hash(N, pp->HN);
+    Hash(N, pp.HN);
 }
 
-ji21::ji21Prv* ji21::ji21_keygen(public_parameter* pp, master_secretkey* msk, const std::vector<std::string>& attrs) {
+ji21::ji21Prv* ji21::ji21_keygen(const std::vector<std::string>& attrs) {
     ji21Prv* prv = new ji21Prv();
     element_t r2;
-    element_init_Zr(r2, pp->pairing);
+    element_init_Zr(r2, pp.pairing);
     element_random(r2);
+    element_init_Zr(debug_r2, pp.pairing);
+    element_set(debug_r2, r2);
     element_t hn_s;
-    element_init_Zr(hn_s, pp->pairing);
-    element_add(hn_s, pp->HN, msk->s); // HN + s
+    element_init_Zr(hn_s, pp.pairing);
+    element_add(hn_s, pp.HN, msk.s); // HN + s
     element_invert(hn_s, hn_s);
     element_t s_r2;
-    element_init_Zr(s_r2, pp->pairing);
-    element_add(s_r2, msk->s, r2); // s + r2
+    element_init_Zr(s_r2, pp.pairing);
+    element_add(s_r2, msk.s, r2); // s + r2
     element_mul(hn_s, hn_s, s_r2); // (s + r2) / (HN + s)
-    element_init_G2(prv->k, pp->pairing);
-    element_pow_zn(prv->k, pp->p2, hn_s);
+    element_init_G2(prv->k, pp.pairing);
+    element_pow_zn(prv->k, pp.p2, hn_s);
     // k1_j, k2_j
     for (const std::string& attr : attrs) {
         attribute_key* comp = new attribute_key();
         comp->attr = attr;
         // random mj
         element_t mj;
-        element_init_Zr(mj, pp->pairing);
+        element_init_Zr(mj, pp.pairing);
         element_random(mj);
         // k1
         element_t h1j;
-        element_init_G2(h1j, pp->pairing);
+        element_init_G2(h1j, pp.pairing);
         element_from_string(h1j, attr);
         element_t tmp;
-        element_init_G2(tmp, pp->pairing);
+        element_init_G2(tmp, pp.pairing);
         element_pow_zn(tmp, h1j, mj);
-        element_init_G2(comp->k1, pp->pairing);
-        element_pow_zn(comp->k1, pp->p2, r2);
+        element_init_G2(comp->k1, pp.pairing);
+        element_pow_zn(comp->k1, pp.p2, r2);
         element_mul(comp->k1, comp->k1, tmp);
         // k2
-        element_init_G1(comp->k2, pp->pairing);
-        element_pow_zn(comp->k2, pp->p1, mj);
+        element_init_G1(comp->k2, pp.pairing);
+        element_pow_zn(comp->k2, pp.p1, mj);
         prv->comps.push_back(comp);
     }
     return prv;
 }
 
-// 生成访问策略的节点
 ji21::ji21Policy* base_node(int k, const std::string& s) {
     ji21::ji21Policy* p = new ji21::ji21Policy();
     p->k = k;
@@ -174,18 +175,7 @@ std::vector<std::string> convertInfixToPostfix(const std::string& infix) {
         opStack.pop();
     }
 
-    std::vector<std::string> postfix;
-    for (const auto& token : output) {
-        if (token == "or") {
-            postfix.push_back("1of2");
-        } else if (token == "and") {
-            postfix.push_back("2of2");
-        } else {
-            postfix.push_back(token);
-        }
-    }
-
-    return postfix;
+    return output;
 }
 
 ji21::ji21Policy* parse_policy_postfix(const std::string& s) {
@@ -193,17 +183,18 @@ ji21::ji21Policy* parse_policy_postfix(const std::string& s) {
     std::vector<ji21::ji21Policy*> stack;
 
     for (const auto& tok : tokens) {
-        if (tok.find("of") == std::string::npos) {
-            stack.push_back(base_node(1, tok));     // 叶子节点，阈值 k=1，属性名为 tok
-        } else {
-            // 令牌包含 "of"，表示是阈值门，需要解析 k 和 n
-            size_t pos = tok.find("of");
-            int k = std::stoi(tok.substr(0, pos));  // 提取阈值 k
-            int n = std::stoi(tok.substr(pos + 2)); // 提取子节点数量 n
+        if (tok == "and" || tok == "or") {
+            int k, n;
+            if (tok == "and") {
+                k = 2;
+                n = 2;
+            } else if (tok == "or") {
+                k = 1;
+                n = 2;
+            }
             // 检查栈中是否有足够的节点供弹出
             if (stack.size() < n) {
-                std::cerr << "错误：栈中节点不足，无法弹出所需的子节点数" << std::endl;
-                exit(1);
+                throw std::runtime_error("Insufficient nodes in stack to pop required number of children");
             }   
             // 创建新的策略节点，阈值为 k，属性名为空（因为是内部节点）
             ji21::ji21Policy* node = base_node(k, "");  // 阈值节点，阈值 k=k，属性名为空
@@ -215,17 +206,18 @@ ji21::ji21Policy* parse_policy_postfix(const std::string& s) {
             }
             // 将新创建的节点压入栈
             stack.push_back(node);
+        } else {
+            stack.push_back(base_node(1, tok));
         }
     }
     // 解析结束后，栈中应只剩下一个节点，即根节点
     if (stack.size() != 1) {
-        std::cerr << "错误：策略字符串格式不正确，无法生成唯一的根节点" << std::endl;
-        exit(1);
+        throw std::runtime_error("Invalid policy string format");
     }
     return stack.back(); // 返回根节点
 }
 
-ji21::ji21Polynomial* rand_poly(int deg, element_t zero_val) {
+ji21::ji21Polynomial* ji21::rand_poly(int deg, element_t zero_val) {
     ji21::ji21Polynomial* q = new ji21::ji21Polynomial(); // 创建新的多项式结构体
     q->deg = deg;                                 // 设置多项式的度数
     q->coef.resize(deg + 1);                      // 调整系数向量的大小，系数数量为 deg + 1
@@ -268,27 +260,23 @@ void eval_poly(element_t r, ji21::ji21Polynomial* q, element_t x) {
     }
     // 将计算得到的多项式值 sum 赋值给结果变量 r，返回的结果变量r
     element_set(r, sum);
-    // 清理临时变量，释放内存
-    element_clear(sum);
-    element_clear(exp);
-    element_clear(term);
 }
 
-void fill_policy(ji21::ji21Policy* p, ji21::public_parameter* pp, element_t e) {
+void ji21::fill_policy(ji21::ji21Policy* p, element_t e) {
     // 生成随机多项式 q，并设置其在 x=0 处的值为 e
     p->q = rand_poly(p->k - 1, e);  // 多项式的度为 k-1，q(0) = e
 
     if (p->children.empty()) {      // 处理叶子节点
         // 初始化叶子节点的加密组件 c 和 cp
-        element_init_G1(p->c, pp->pairing);
-        element_init_G2(p->cp, pp->pairing);
+        element_init_G1(p->c, pp.pairing);
+        element_init_G2(p->cp, pp.pairing);
         // 将属性字符串映射为群元素 h_attr = H(attr)
         element_t h_attr;
-        element_init_G2(h_attr, pp->pairing);
+        element_init_G2(h_attr, pp.pairing);
         element_from_string(h_attr, p->attr);
         // 计算加密组件
         // c = pk2^{q(0)}
-        element_pow_zn(p->c, pp->pk2, p->q->coef[0]);
+        element_pow_zn(p->c, pp.pk2, p->q->coef[0]);
         // cp = H(attr)^{q(0)}
         element_pow_zn(p->cp, h_attr, p->q->coef[0]);
         // 清理临时元素 h_attr
@@ -296,18 +284,18 @@ void fill_policy(ji21::ji21Policy* p, ji21::public_parameter* pp, element_t e) {
     } else {        // 处理阈值节点
         // 初始化临时元素 index，用于表示子节点的序号
         element_t index;
-        element_init_Zr(index, pp->pairing);
+        element_init_Zr(index, pp.pairing);
         // 遍历子节点
         for (size_t i = 0; i < p->children.size(); ++i) {
             // 设置 index = i + 1，因为子节点序号从 1 开始
             element_set_si(index, i + 1);
             // 初始化临时元素 q_y0，用于存储多项式在子节点序号处的值 q(i+1)
             element_t q_y0;
-            element_init_Zr(q_y0, pp->pairing);
+            element_init_Zr(q_y0, pp.pairing);
             // 计算多项式 q 在 index 处的值，即 f(x) = q_y0(父节点的f(x)值为子节点的秘密值) = q(index)
             eval_poly(q_y0, p->q, index);
             // 递归调用 fill_policy，填充子节点，传递 q_y0 作为新的 e 值
-            fill_policy(p->children[i], pp, q_y0);
+            fill_policy(p->children[i], q_y0);
             // 清理临时元素 q_y0
             element_clear(q_y0);
         }
@@ -316,28 +304,31 @@ void fill_policy(ji21::ji21Policy* p, ji21::public_parameter* pp, element_t e) {
     }
 }
 
-ji21::ji21Cph* ji21::ji21_enc(public_parameter* pp, const std::string& policy_str, element_t m) {
+ji21::ji21Cph* ji21::ji21_enc(const std::string& policy_str, plaintext *ptx) {
     ji21Cph* cph = new ji21Cph();
     // random exponent
     element_t s;
-    element_init_Zr(s, pp->pairing);
+    element_init_Zr(s, pp.pairing);
     element_random(s); 
     // r1
     element_t r1;
-    element_init_Zr(r1, pp->pairing);
+    element_init_Zr(r1, pp.pairing);
     element_random(r1);
+    element_init_Zr(debug_r1, pp.pairing);
+    element_set(debug_r1, r1);
     // c_y & c'_y
     cph->p = parse_policy_postfix(policy_str); // parse policy into access tree
-    fill_policy(cph->p, pp, s); // set root secret to s & share
+    fill_policy(cph->p, s); // set root secret to s & share
     // c1
-    element_init_G1(cph->c1, pp->pairing);
-    element_pow_zn(cph->c1, pp->p1, pp->HN);
-    element_mul(cph->c1, cph->c1, pp->pk1);
+    element_init_G1(cph->c1, pp.pairing);
+    element_pow_zn(cph->c1, pp.p1, pp.HN);
+    element_mul(cph->c1, cph->c1, pp.pk1);
     element_pow_zn(cph->c1, cph->c1, r1);
     // c2
-    element_init_GT(cph->c2, pp->pairing);
-    element_pairing(cph->c2, pp->pk1, pp->p2);
+    element_init_GT(cph->c2, pp.pairing);
+    element_pairing(cph->c2, pp.pk1, pp.p2);
     element_pow_zn(cph->c2, cph->c2, r1);
+    element_mul(cph->c2, cph->c2, ptx->message);
 
     return cph;
 }
@@ -365,10 +356,10 @@ bool check_sat(ji21::ji21Policy* p, const std::vector<std::string>& attrs) {
     return p->satisfiable;
 }
 
-void lagrange_coefficient(element_t coef, const std::vector<int>& satl, int i, ji21::public_parameter* pub) {
+void ji21::lagrange_coefficient(element_t coef, const std::vector<int>& satl, int i) {
     element_t num, denom; // 分别用于存储分子和分母的中间计算结果
-    element_init_Zr(num, pub->pairing);   // 初始化分子 num 为整数域元素
-    element_init_Zr(denom, pub->pairing); // 初始化分母 denom 为整数域元素
+    element_init_Zr(num, pp.pairing);   // 初始化分子 num 为整数域元素
+    element_init_Zr(denom, pp.pairing); // 初始化分母 denom 为整数域元素
     element_set1(num);    // num = 1，初始化分子为 1
     element_set1(denom);  // denom = 1，初始化分母为 1
 
@@ -378,7 +369,7 @@ void lagrange_coefficient(element_t coef, const std::vector<int>& satl, int i, j
             continue;  // 跳过当前节点索引 i
         }
         element_t tmp; // 临时变量用于存储中间结果
-        element_init_Zr(tmp, pub->pairing);
+        element_init_Zr(tmp, pp.pairing);
 
         // 计算分子部分 num *= -j
         element_set_si(tmp, -j);          // tmp = -j
@@ -401,13 +392,13 @@ void lagrange_coefficient(element_t coef, const std::vector<int>& satl, int i, j
     element_clear(denom);
 }
 
-void decrypt_node_with_lagrange(element_t r, ji21::ji21Policy* p, ji21::ji21Prv* prv, ji21::ji21Cph* cph, ji21::public_parameter* pub) {
+void ji21::decrypt_node_with_lagrange(element_t r, ji21Policy* p, ji21Prv* prv, ji21Cph* cph) {
     if (p->children.empty()) { // leaf node
         for (auto& comp : prv->comps) {
             if (comp->attr == p->attr) {  // 找到用户私钥对应的属性密文
                 element_t e1, e2;
-                element_init_GT(e1, pub->pairing);
-                element_init_GT(e2, pub->pairing);
+                element_init_GT(e1, pp.pairing);
+                element_init_GT(e2, pp.pairing);
                 // e1 = e(C_y, k1)
                 element_pairing(e1, p->c, comp->k1);
                 // e2 = e(k2, C'_y)
@@ -418,22 +409,22 @@ void decrypt_node_with_lagrange(element_t r, ji21::ji21Policy* p, ji21::ji21Prv*
                 break;
             }
         }
-    } else {        // 处理非叶子节点，使用拉格朗日插值还原秘密 s
+    } else { // non-leaf
         element_t Fx, t;
         // 初始化 Fx，用于累积子节点的解密结果
-        element_init_GT(Fx, pub->pairing);
+        element_init_GT(Fx, pp.pairing);
         element_set1(Fx);  // 初始化 Fx 为 1
         // 初始化 t，用于存储拉格朗日系数
-        element_init_Zr(t, pub->pairing);
+        element_init_Zr(t, pp.pairing);
         // 遍历满足条件的子节点索引列表 p->satl
         for (int i : p->satl) {
             element_t share;
             // 初始化 share，用于存储子节点的解密结果
-            element_init_GT(share, pub->pairing);
+            element_init_GT(share, pp.pairing);
             // 递归解密子节点，注意子节点数组从 0 开始，而 satl 索引从 1 开始
-            decrypt_node_with_lagrange(share, p->children[i - 1], prv, cph, pub);
+            decrypt_node_with_lagrange(share, p->children[i - 1], prv, cph);
             // 计算拉格朗日系数 t = λ_i
-            lagrange_coefficient(t, p->satl, i, pub);
+            lagrange_coefficient(t, p->satl, i);
             // 计算 share = share^{λ_i}
             element_pow_zn(share, share, t);
             // 累积计算 Fx = Fx * share
@@ -446,7 +437,7 @@ void decrypt_node_with_lagrange(element_t r, ji21::ji21Policy* p, ji21::ji21Prv*
     }
 }
 
-ji21::ji21ElementBoolean* ji21::ji21_dec(public_parameter* pub, ji21Prv* prv, ji21Cph* cph) {
+ji21::ji21ElementBoolean* ji21::ji21_dec(ji21Prv* prv, ji21Cph* cph) {
     ji21ElementBoolean* result = new ji21ElementBoolean();    
     // 提取用户私钥中的属性列表，存入 attrs
     std::vector<std::string> attrs;    // 从私钥中提取用户属性集
@@ -459,34 +450,24 @@ ji21::ji21ElementBoolean* ji21::ji21_dec(public_parameter* pub, ji21Prv* prv, ji
         result->b = false;
         return result;
     }
-    // recursively decrypt e(p1, p2)^{r1 s}
+    // recursively decrypt e(p1, p2)^{r1 r2}
     element_t tmp_deno;
-    element_init_GT(tmp_deno, pub->pairing);
+    element_init_GT(tmp_deno, pp.pairing);
     element_set1(tmp_deno);
     // recursively call
-    decrypt_node_with_lagrange(tmp_deno, cph->p, prv, cph, pub);
+    decrypt_node_with_lagrange(tmp_deno, cph->p, prv, cph); // bug here
 
     // e(c1, k)
     element_t B;
-    element_init_GT(B, pub->pairing);
+    element_init_GT(B, pp.pairing);
     element_pairing(B, cph->c1, prv->k);
-    // B = e(c1, k) / e(p1, p2)^{r1 s}
-    element_div(B, B, tmp_deno); // e_CD = e(C, D) / e(g, g)^{rs}
+    // B = e(c1, k) / e(p1, p2)^{r1 r2} = e(p1, p2)^{r1 s}
+    element_div(B, B, tmp_deno);
     // M = c2 / B
-    element_init_GT(result->e, pub->pairing);
+    element_init_GT(result->e, pp.pairing);
     element_div(result->e, cph->c2, B);
     result->b = true; // 解密成功
     return result;
 }
-
-// 释放策略树资源
-void free_ji21_policy(ji21::ji21Policy* p) {
-    if (!p) return;
-    for (auto& child : p->children) {
-        free_ji21_policy(child);
-    }
-    delete p;
-}
-
 
 }

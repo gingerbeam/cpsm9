@@ -14,6 +14,12 @@ void element_to_string(element_t& element, std::string& str);
 void element_from_string(element_t h, const std::string& s);
 
 class ji21 {
+private:
+element_t debug_r1;
+element_t debug_r2;
+element_t debug_s;
+element_t debug_gt1;
+element_t debug_gt2;
 public:
 struct plaintext {
     element_t message;
@@ -26,12 +32,12 @@ struct public_parameter {
     element_t pk1;
     element_t pk2;
     element_t HN;
-};
+} pp;
 
 struct master_secretkey {
     element_t s;
     element_t t;
-};
+} msk;
 
 struct attribute_key {
     std::string attr;    // 属性名
@@ -71,17 +77,30 @@ struct ji21ElementBoolean {
     bool b;       // 解密成功标志
 };
 
-ji21();
+ji21(std::string &param);
 
-static void ji21_setup(public_parameter* pub, master_secretkey* msk);
+ji21Prv* ji21_keygen(const std::vector<std::string>& attrs);
 
-static ji21Prv* ji21_keygen(public_parameter* pub, master_secretkey* msk, const std::vector<std::string>& attrs);
+ji21Cph* ji21_enc(const std::string& policy_str, plaintext *ptx);
 
-static ji21Cph* ji21_enc(public_parameter* pub, const std::string& policy_str, element_t m);
+ji21ElementBoolean* ji21_dec(ji21Prv* prv, ji21Cph* cph);
 
-static ji21ElementBoolean* ji21_dec(public_parameter* pub, ji21Prv* prv, ji21Cph* cph);
+ji21Polynomial* rand_poly(int deg, element_t zero_val);
+void fill_policy(ji21::ji21Policy* p, element_t e);
+void decrypt_node_with_lagrange(element_t r, ji21Policy* p, ji21Prv* prv, ji21Cph* cph);
+void lagrange_coefficient(element_t coef, const std::vector<int>& satl, int i);
+
+// encapsulate message
+void Encaps(int message, plaintext *ptx) {
+    element_init_GT(ptx->message, pp.pairing);
+    element_set_si(ptx->message, message);
+}
+
+void RandomEncaps(plaintext *ptx) {
+    element_init_GT(ptx->message, pp.pairing);
+    element_random(ptx->message);
+}
 };
-
 }
 
 #endif
