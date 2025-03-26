@@ -55,3 +55,12 @@ add_executable(lsss_test
         src/curve/params.cc)
 
 target_link_libraries(lsss_test gtest pbc Eigen3::Eigen)
+
+add_executable(ji21_test
+        test/ji21_test.cc
+        src/crypto/ji21.cc
+        src/curve/params.cc)
+
+target_link_libraries(ji21_test gtest pbc OpenSSL::SSL
+        "/lib/x86_64-linux-gnu/libgmpxx.a"
+        "/lib/x86_64-linux-gnu/libgmp.a")
