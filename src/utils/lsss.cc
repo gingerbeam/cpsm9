@@ -6,42 +6,16 @@ namespace utils {
 // ExprParser
 std::vector<std::string> ExprParser::tokenize(const std::string& input) {
     std::vector<std::string> tokens;
-    int n = input.size();
-    for (int i = 0; i < n; ) {
-        // 跳过空格
-        while (i < n && isspace(input[i])) i++;
-        if (i >= n) break;
+    std::regex token_regex(R"((and|or|\(|\))|([a-zA-Z_]\w*))");
+    auto words_begin = std::sregex_iterator(input.begin(), input.end(), token_regex);
+    auto words_end = std::sregex_iterator();
 
-        // 处理括号
-        if (input[i] == '(' || input[i] == ')') {
-            tokens.push_back(std::string(1, input[i++]));
-            continue;
-        }
-
-        // 处理关键字 "and" 或 "or"
-        if (i + 3 <= n && input[i] == 'a' && input[i+1] == 'n' && input[i+2] == 'd') {
-            tokens.push_back("and");
-            i += 3;
-            continue;
-        }
-        if (i + 2 <= n && input[i] == 'o' && input[i+1] == 'r') {
-            tokens.push_back("or");
-            i += 2;
-            continue;
-        }
-
-        // 处理标识符（允许字母和数字）
-        std::string token;
-        bool found = false;
-        while (i < n && isalnum(input[i])) {
-            token += input[i++];
-            found = true;
-        }
-        if (found) {
-            tokens.push_back(token);
-        } else {
-            // 遇到无法处理的字符（如符号），强制递增i
-            i++; 
+    for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
+        std::smatch match = *i;
+        if (match[1].matched) { // 匹配到关键字或括号
+            tokens.push_back(match[1].str());
+        } else if (match[2].matched) { // 匹配到标识符
+            tokens.push_back(match[2].str());
         }
     }
     return tokens;
@@ -61,10 +35,7 @@ int ExprParser::traverse(int nodeIdx, int c, std::vector<int> &pVec) {
             return std::max(traverse(node.left, c + 1, lVec), traverse(node.right, c + 1, rVec));
         }
     } else { // is leaf node
-        // std::cout << "DEBUG - test: vecs[itor_map[nodeIdx]] = pVec;" << std::endl;
-        // vecs[itor_map[nodeIdx]] = pVec;
         vecs.push_back(pVec);
-        // std::cout << "DEBUG - test: vecs[itor_map[nodeIdx]] = pVec;" << std::endl;
         return c;
     }
 }
@@ -125,7 +96,6 @@ ExprParser::ExprParser(std::string &input) {
                 // TODO: 这一堆映射该优化了
                 itoa_map[atoi_map[token]] = token;
                 itor_map.push_back(atoi_map[token]);
-                rtoi_map[itor_map.size() - 1] = atoi_map[token];
             } // 否则 atoi_map[token] 为节点中的映射值
             node_stack.push(atoi_map[token]);
         }
@@ -178,7 +148,7 @@ void LSSS::genLSSSPair() {
         }
     }
     for (int i = 0; i < parser->get_l(); ++i) {
-        policy.rho[i] = parser->itoa_map[parser->rtoi_map[i]];
+        policy.rho[i] = parser->itoa_map[parser->itor_map[i]];
     }
 }
 

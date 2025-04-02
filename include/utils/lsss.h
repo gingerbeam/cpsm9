@@ -33,8 +33,6 @@ public:
     std::unordered_map<std::string, int> atoi_map;
     std::unordered_map<int, std::string> itoa_map;
     std::vector<int> itor_map;
-    std::unordered_map<int, int> rtoi_map;
-    // std::vector<int> *vecs;
     std::vector<std::vector<int>> vecs;
     
     // initial expression & atoi_map & itoa_map

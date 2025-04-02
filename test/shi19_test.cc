@@ -25,6 +25,7 @@ TEST(Shi19Test, RandomizeTets) {
     scheme.RandomEncaps(&ptx);
     crypto::shi19::abe_ciphertext ctx;
     scheme.shi19Encrypt(ptx, access_structure, &ctx);
+    // scheme.shi19Encrypt(ptx, &ctx);
     crypto::shi19::plaintext res;
     scheme.shi19Decrypt(&ctx, attrs, &sk, &res);
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));

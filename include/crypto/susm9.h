@@ -17,6 +17,7 @@ private:
     // pp = {BP, g1, g2, gpub, u=ga, nu, h1 ... hU}
     struct public_parameter {
         pairing_t pairing;
+        element_t gid;
         element_t g1;
         element_t g2;
         element_t u;
@@ -32,7 +33,7 @@ private:
 
     void Hash(element_t &m, element_t &res);
 public:
-    element_t HN;
+    // element_t HN;
 
     struct attribute_set {
         std::vector<std::string> attrs;

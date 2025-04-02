@@ -8,6 +8,9 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <map>
+#include <stack>
+#include <regex>
 
 #include <openssl/sha.h>
 
@@ -20,6 +23,8 @@ class shi19 : public besm9 {
 private:
     std::string set_to_id(std::vector<std::string> &attrs);
 
+    std::vector<std::vector<std::string>> access_structure;
+
 public:
     typedef besm9::broadcast_ciphertext abe_ciphertext;
 
@@ -27,6 +32,7 @@ public:
 
     void shi19Keygen(std::vector<std::string> &attrs, secretkey *sk);
 
+    void shi19Encrypt(plaintext &ptx, std::string policy, abe_ciphertext *ctx);
     void shi19Encrypt(plaintext &ptx, std::vector<std::vector<std::string>> &as, abe_ciphertext *ctx);
 
     void shi19Decrypt(abe_ciphertext *ctxs, std::vector<std::string> &attrs, secretkey *sk, plaintext *ptx);

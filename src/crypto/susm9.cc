@@ -41,9 +41,7 @@ susm9::susm9(std::string &param, std::vector<std::string> Universe) {
     element_pow_zn(pp.g_pub, pp.g1, msk.alpha);
     // nu
     element_init_GT(pp.nu, pp.pairing);
-    // pairing_apply(pp.nu, pp.g, pp.g, pp.pairing);
     element_pairing(pp.nu, pp.g_pub, pp.g2);
-    // element_pow_zn(pp.nu, pp.nu, msk.alpha);
     // set up attribute parameters
     for (auto x : Universe) {
         element_t *hx = (element_t *)(new element_t);
@@ -51,17 +49,12 @@ susm9::susm9(std::string &param, std::vector<std::string> Universe) {
         element_random(*hx);
         pp.h.insert({x, hx});
     }
-    // generate HN
-    element_init_Zr(HN, pp.pairing);
-    element_t N;
-    element_init_Zr(N, pp.pairing);
-    element_random(N);
-    Hash(N, HN);
-    // Hash(*gid, HN);
-    // std::cout << "SUSM9: Scheme Setup Done.\n";
+    // generate gid for HN
+    element_init_Zr(pp.gid, pp.pairing);
 }
 
 void susm9::Keygen(attribute_set *A, secretkey *sk) {
+    // temp
     element_t tmp1;
     element_t tmp2;
     element_init_G1(tmp1, pp.pairing);
@@ -73,7 +66,8 @@ void susm9::Keygen(attribute_set *A, secretkey *sk) {
     // HN+alpha
     element_t HN_alpha;
     element_init_Zr(HN_alpha, pp.pairing);
-    element_add(HN_alpha, HN, msk.alpha);
+    Hash(pp.gid, HN_alpha);
+    element_add(HN_alpha, HN_alpha, msk.alpha);
     element_invert(HN_alpha, HN_alpha);
     // randomness
     element_t t;
@@ -102,8 +96,6 @@ void susm9::Keygen(attribute_set *A, secretkey *sk) {
 void susm9::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
     element_t tmp;
     element_init_G2(tmp, pp.pairing);
-
-    // std::cout << "Waters11: Encrypt.\n";
     // init lsss policy
     ctx->lsss_policy = new utils::LSSS(&pp.pairing, policy);
     // secret exponent s
@@ -115,6 +107,9 @@ void susm9::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
     element_pow_zn(ctx->c_m, pp.nu, s);
     element_mul(ctx->c_m, ctx->c_m, ptx.message);
     // g_prime = (g1^HN g_pub)^s
+    element_t HN;
+    element_init_Zr(HN, pp.pairing);
+    Hash(pp.gid, HN);
     element_init_G1(ctx->c_prime, pp.pairing);
     element_pow_zn(ctx->c_prime, pp.g1, HN);
     element_mul(ctx->c_prime, ctx->c_prime, pp.g_pub);
@@ -124,13 +119,10 @@ void susm9::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
     ctx->c = std::vector<element_t>(ctx->lsss_policy->get_l());
     ctx->d = std::vector<element_t>(ctx->lsss_policy->get_l());
     auto lambda = ctx->lsss_policy->share(&s);
+    element_t ri;
+    element_init_Zr(ri, pp.pairing);
     for (int i = 0; i < ctx->lsss_policy->get_l(); i++) {
-        element_t ri;
-        element_init_Zr(ri, pp.pairing);
         element_random(ri);
-        // element_t neg_ri;
-        // element_init_Zr(neg_ri, pp.pairing);
-        // element_neg(neg_ri, ri);
         // ci
         element_init_G2(ctx->c[i], pp.pairing);
         element_pow_zn(ctx->c[i], pp.u, *(lambda[i]));
@@ -141,7 +133,6 @@ void susm9::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
         element_init_G1(ctx->d[i], pp.pairing);
         element_pow_zn(ctx->d[i], pp.g1, ri);
     }
-    // std::cout << "Waters11: Scheme Encrypt Done.\n";
 }
 
 void susm9::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *ptx) {

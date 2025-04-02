@@ -103,9 +103,9 @@ ji21::ji21Prv* ji21::ji21_keygen(std::vector<std::string>& attrs) {
     element_mul(nume, nume, deno); // (alpha + r) / (HN + alpha)
     element_init_G2(prv->k, pp.pairing);
     element_pow_zn(prv->k, pp.p2, nume);
-    // free temporary variables
-    element_clear(deno);
-    element_clear(nume);
+    // // free temporary variables
+    // element_clear(deno);
+    // element_clear(nume);
     // for every attribute, compute k1 and k2
     for (std::string& attr : attrs) {
         attribute_key* comp = new attribute_key();

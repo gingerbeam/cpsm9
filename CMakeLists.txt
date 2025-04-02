@@ -24,17 +24,6 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON)
 FetchContent_MakeAvailable(googletest)
 
-# add_executable(shi19_test
-#         test/shi19_test.cc
-#         src/crypto/shi19.cc
-#         src/crypto/kemsm9.cc
-#         src/crypto/besm9.cc
-#         src/curve/params.cc)
-        
-# target_link_libraries(shi19_test gtest pbc OpenSSL::SSL
-#         "/lib/x86_64-linux-gnu/libgmpxx.a"
-#         "/lib/x86_64-linux-gnu/libgmp.a")
-
 add_executable(scheme_test
         test/scheme_test.cc
         src/crypto/w11.cc
@@ -53,18 +42,27 @@ target_link_libraries(scheme_test gtest pbc OpenSSL::SSL
         "/lib/x86_64-linux-gnu/libgmpxx.a"
         "/lib/x86_64-linux-gnu/libgmp.a")
 
+add_executable(efficiency_test
+        test/efficiency_test.cc
+        src/crypto/w11.cc
+        src/crypto/rw13.cc
+        src/crypto/sm9.cc
+        src/crypto/susm9.cc
+        src/crypto/lusm9.cc
+        src/crypto/ji21.cc
+        src/utils/lsss.cc
+        src/crypto/shi19.cc
+        src/crypto/kemsm9.cc
+        src/crypto/besm9.cc
+        src/curve/params.cc)
+        
+target_link_libraries(efficiency_test gtest pbc OpenSSL::SSL
+        "/lib/x86_64-linux-gnu/libgmpxx.a"
+        "/lib/x86_64-linux-gnu/libgmp.a")
+
 # add_executable(lsss_test
 #         test/lsss_test.cc
 #         src/utils/lsss.cc
 #         src/curve/params.cc)
 
 # target_link_libraries(lsss_test gtest pbc Eigen3::Eigen)
-
-# add_executable(ji21_test
-#         test/ji21_test.cc
-#         src/crypto/ji21.cc
-#         src/curve/params.cc)
-
-# target_link_libraries(ji21_test gtest pbc OpenSSL::SSL
-#         "/lib/x86_64-linux-gnu/libgmpxx.a"
-#         "/lib/x86_64-linux-gnu/libgmp.a")
