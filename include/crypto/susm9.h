@@ -14,6 +14,11 @@ namespace crypto {
 
 class susm9 {
 private:
+    element_t tmp_2;
+    element_t tmp_r1;
+    element_t tmp_r2;
+    element_t tmp_hn_alpha;
+
     // pp = {BP, g1, g2, gpub, u=ga, nu, h1 ... hU}
     struct public_parameter {
         pairing_t pairing;
@@ -21,7 +26,6 @@ private:
         element_t g1;
         element_t g2;
         element_t u;
-        element_t alpha;
         element_t g_pub;
         element_t nu;
         std::unordered_map<std::string, element_t*> h;
@@ -33,8 +37,6 @@ private:
 
     void Hash(element_t &m, element_t &res);
 public:
-    // element_t HN;
-
     struct attribute_set {
         std::vector<std::string> attrs;
     };

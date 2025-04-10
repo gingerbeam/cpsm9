@@ -13,17 +13,17 @@
 namespace crypto {
 
 class rw13 {
-private:    
+private:
+    // temporary element_t
+    element_t tmp2; // G2
+    element_t tmpr1; // Zr
+        
     struct master_secretkey {
         element_t alpha;
     } msk;
 
     void HtoZ(std::string &m, element_t &res);
-public:
-    // temporary element_t
-    element_t tmp2; // G2
-    element_t tmpr1; // Zr
-    
+public:    
     // pp = {BP, g, u, h, w, v, nu}
     struct public_parameter {
         pairing_t pairing;

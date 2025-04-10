@@ -14,6 +14,11 @@ namespace crypto {
 
 class lusm9 {
 private:
+    element_t tmp_2;
+    element_t tmp_r1;
+    element_t tmp_r2;
+    element_t tmp_hn_alpha;
+
     // pp = {BP, g1, g2, g_pub, u, v, w, h, nu}
     struct public_parameter {
         pairing_t pairing;
@@ -23,17 +28,15 @@ private:
         element_t v;
         element_t w;
         element_t h;
-        element_t alpha;
         element_t g_pub;
         element_t nu; // nu = e(g_pub,g2)
+        element_t gid;
     } pp;
     
     struct master_secretkey {
         element_t alpha;
     } msk;
 public:
-    element_t HN;
-
     struct attribute_set {
         std::vector<std::string> attrs;
     };

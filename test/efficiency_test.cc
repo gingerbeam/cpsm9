@@ -14,8 +14,9 @@ using namespace crypto;
 FILE *out = NULL; const bool out_file = true, visiable = false;
 int turns = 0, turns_setup = 1, turns_keygen = 1, turns_enc = 1, turns_dec = 1, n = -1, rev_G1G2;
 std::chrono::_V2::system_clock::time_point ts, te;
-// std::vector<std::string> attrs = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}; std::string policy = "(A and B and C) and (D or E or F) and (G and H and (I or J or K or L))";A&(DDDD|(BB&CCC))
+// std::vector<std::string> attrs = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}; std::string policy = "(A and B and C) and (D or E or F) and (G and H and (I or J or K or L))";
 std::vector<std::string> attrs = {"A", "B", "C", "D", "E", "F", "G", "H", "I"}; std::string policy = "A and B or C and D and E and F or G and H and I";
+// std::vector<std::string> attrs = {"A", "B", "C", "D"}; std::string policy = "(A or B) and (C or D)";
 CurveParams curve;
 
 void w11_test(std::string &param) {
@@ -190,20 +191,13 @@ void ji21_test(std::string &param) {
     fprintf(out, "   dec time: %lf ms.\n", total_duration / turns_dec);
 }
 
-void a_curve_test() {
-    w11_test(curve.a_param);
-    susm9_test(curve.a_param);
-    rw13_test(curve.a_param);
-    lusm9_test(curve.a_param);
-    ji21_test(curve.a_param);
-    shi19_test(curve.a_param);
-}
-
-void sm9_curve_test() {
-    susm9_test(curve.sm9_param);
-    lusm9_test(curve.sm9_param);
-    ji21_test(curve.sm9_param);
-    shi19_test(curve.sm9_param);
+void test(std::string &param) {
+    w11_test(param);
+    susm9_test(param);
+    rw13_test(param);
+    lusm9_test(param);
+    ji21_test(param);
+    // shi19_test(param);
 }
 
 void test_hash(std::string &m, element_t &res) {
@@ -265,8 +259,8 @@ int main(int argc, char *argv[]) { // curve, turn, function, if_swap
 
     // hash_test();
 
-    if(strcmp(argv[1], "a") == 0) a_curve_test();
-    else if(strcmp(argv[1], "sm9") == 0) sm9_curve_test();
+    if(strcmp(argv[1], "a") == 0) test(curve.a_param);
+    else if(strcmp(argv[1], "sm9") == 0) test(curve.sm9_param);
 
     fclose(out);
     return 0;

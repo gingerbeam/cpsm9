@@ -29,11 +29,15 @@ void lusm9::HtoZ(std::string &m, element_t &res) {
 }
 
 lusm9::lusm9(std::string &param) {
-    // std::cout << "lusm9: Scheme Setup.\n";
     // init pairing
     pbc_param_t par;
     pbc_param_init_set_str(par, param.c_str());
     pairing_init_pbc_param(pp.pairing, par);
+    // init temporary element_t objects
+    element_init_G2(tmp_2, pp.pairing);
+    element_init_Zr(tmp_r1, pp.pairing);
+    element_init_Zr(tmp_r2, pp.pairing);
+    element_init_Zr(tmp_hn_alpha, pp.pairing);
     // g1
     element_init_G1(pp.g1, pp.pairing);
     element_random(pp.g1);
@@ -62,137 +66,94 @@ lusm9::lusm9(std::string &param) {
     element_init_GT(pp.nu, pp.pairing);
     element_pairing(pp.nu, pp.g_pub, pp.g2);
     // generate HN
-    element_init_Zr(HN, pp.pairing);
-    element_t N;
-    element_init_Zr(N, pp.pairing);
-    element_random(N);
-    Hash(N, HN);
-    // std::cout << "lusm9: Scheme Setup Done.\n";
+    element_init_Zr(pp.gid, pp.pairing);
+    element_random(pp.gid);
 }
 
 void lusm9::Keygen(attribute_set *A, secretkey *sk) {
-    element_t tmp1;
-    element_t tmp2;
-    element_init_G1(tmp1, pp.pairing);
-    element_init_G2(tmp2, pp.pairing);
-    element_t tmp;
-    element_init_Zr(tmp, pp.pairing);
-
-    // std::cout << "lusm9: Keygen.\n";
     // HN+alpha
-    element_t HN_alpha;
-    element_init_Zr(HN_alpha, pp.pairing);
-    element_add(HN_alpha, HN, msk.alpha);
-    element_invert(HN_alpha, HN_alpha);
+    Hash(pp.gid, tmp_hn_alpha);
+    element_add(tmp_hn_alpha, tmp_hn_alpha, msk.alpha);
+    element_invert(tmp_hn_alpha, tmp_hn_alpha);
     // randomness
     element_t t;
     element_init_Zr(t, pp.pairing);
     element_random(t);
     // K = g2^{alpha/HN+alpha} u^{t/HN+alpha}
     element_init_G2(sk->k, pp.pairing);
-    element_mul(tmp, msk.alpha, HN_alpha);
-    element_pow_zn(sk->k, pp.g2, tmp);
-    element_mul(tmp, t, HN_alpha);
-    element_pow_zn(tmp2, pp.u, tmp);
-    element_mul(sk->k, sk->k, tmp2);
+    element_mul(tmp_r1, msk.alpha, tmp_hn_alpha);
+    element_pow_zn(sk->k, pp.g2, tmp_r1);
+    element_mul(tmp_r1, t, tmp_hn_alpha);
+    element_pow_zn(tmp_2, pp.u, tmp_r1);
+    element_mul(sk->k, sk->k, tmp_2);
     // L = g1^t
     element_init_G1(sk->l, pp.pairing);
     element_pow_zn(sk->l, pp.g1, t);
     // v^{-t}
-    element_pow_zn(tmp2, pp.v, t);
-    element_invert(tmp2, tmp2);
+    element_pow_zn(tmp_2, pp.v, t);
+    element_invert(tmp_2, tmp_2);
     // for all a in attrs, choose t_x
-    element_t ta;
-    element_init_Zr(ta, pp.pairing);
-    element_t _a;
-    element_init_Zr(_a, pp.pairing);
     for (auto a : A->attrs) {
-        // randomness
-        element_random(ta);
-        // ka1 = g_1^{t_x}
         element_t *ka1 = (element_t *)(new element_t);
         element_init_G1(*ka1, pp.pairing);
-        element_pow_zn(*ka1, pp.g1, ta);
-        sk->kx1.insert({a, ka1});
-        // ka2 = (w^x h)^{t_x}v^{-t}
         element_t *ka2 = (element_t *)(new element_t);
         element_init_G2(*ka2, pp.pairing);
         // A_tao as element_t
-        HtoZ(a, _a);
-        element_pow_zn(*ka2, pp.w, _a);
+        HtoZ(a, tmp_r1);
+        element_pow_zn(*ka2, pp.w, tmp_r1);
+        // randomness
+        element_random(tmp_r1);
+        // ka1 = g_1^{t_x}
+        element_pow_zn(*ka1, pp.g1, tmp_r1);
+        sk->kx1.insert({a, ka1});
+        // ka2 = (w^x h)^{t_x}v^{-t}
         element_mul(*ka2, *ka2, pp.h);
-        element_pow_zn(*ka2, *ka2, ta);
-        element_mul(*ka2, *ka2, tmp2);
-        
+        element_pow_zn(*ka2, *ka2, tmp_r1);
+        element_mul(*ka2, *ka2, tmp_2);
         sk->kx2.insert({a, ka2});
     }
-    // std::cout << "lusm9: Scheme Keygen Done.\n";
-
-    // Clear temporary elements
-    element_clear(tmp1);
-    element_clear(tmp2);
-    element_clear(tmp);
-    element_clear(HN_alpha);
-    element_clear(t);
-    element_clear(ta);
-    element_clear(_a);
 }
 
 void lusm9::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
-    element_t tmp;
-    element_init_G2(tmp, pp.pairing);
-
-    // std::cout << "lusm9: Encrypt.\n";
     // init lsss policy
     ctx->lsss_policy = new utils::LSSS(&pp.pairing, policy);
     // secret exponent s
-    element_t s;
-    element_init_Zr(s, pp.pairing);
-    element_random(s);
+    element_random(tmp_r1);
     // cm = m * nu^s
     element_init_GT(ctx->c_m, pp.pairing);
-    element_pow_zn(ctx->c_m, pp.nu, s);
+    element_pow_zn(ctx->c_m, pp.nu, tmp_r1);
     element_mul(ctx->c_m, ctx->c_m, ptx.message);
     // c_0 = g_pub^s (g^HN)^s
+    Hash(pp.gid, tmp_hn_alpha);
     element_init_G1(ctx->c_prime, pp.pairing);
-    element_pow_zn(ctx->c_prime, pp.g1, HN);
+    element_pow_zn(ctx->c_prime, pp.g1, tmp_hn_alpha);
     element_mul(ctx->c_prime, ctx->c_prime, pp.g_pub);
-    element_pow_zn(ctx->c_prime, ctx->c_prime, s);
+    element_pow_zn(ctx->c_prime, ctx->c_prime, tmp_r1);
     // c_i
     ctx->ci1 = std::vector<element_t>(ctx->lsss_policy->get_l());
     ctx->ci2 = std::vector<element_t>(ctx->lsss_policy->get_l());
     ctx->ci3 = std::vector<element_t>(ctx->lsss_policy->get_l());
-    auto lambda = ctx->lsss_policy->share(&s);
-    element_t _rhoi;
-    element_init_Zr(_rhoi, pp.pairing);
-    element_t ri;
-    element_init_Zr(ri, pp.pairing);
+    auto lambda = ctx->lsss_policy->share(&tmp_r1);
     for (int i = 0; i < ctx->lsss_policy->get_l(); i++) {
-        element_random(ri);
-        // c_i_1 = u^{lambda_i} v^{ri}
         element_init_G2(ctx->ci1[i], pp.pairing);
-        element_pow_zn(ctx->ci1[i], pp.u, *(lambda[i]));
-        element_pow_zn(tmp, pp.v, ri);
-        element_mul(ctx->ci1[i], ctx->ci1[i], tmp);
-        // c_i_2 = (w^{rho(i)}h)^{-ri}
         element_init_G2(ctx->ci2[i], pp.pairing);
         std::string rhoi = ctx->lsss_policy->rho_map(i);
-        HtoZ(rhoi, _rhoi);
-        element_pow_zn(ctx->ci2[i], pp.w, _rhoi);
+        HtoZ(rhoi, tmp_r1);
+        element_pow_zn(ctx->ci2[i], pp.w, tmp_r1);
+        // randomness
+        element_random(tmp_r1);
+        // c_i_1 = u^{lambda_i} v^{ri}
+        element_pow_zn(ctx->ci1[i], pp.u, *(lambda[i]));
+        element_pow_zn(tmp_2, pp.v, tmp_r1);
+        element_mul(ctx->ci1[i], ctx->ci1[i], tmp_2);
+        // c_i_2 = (w^{rho(i)}h)^{-ri}
         element_mul(ctx->ci2[i], ctx->ci2[i], pp.h);
-        element_pow_zn(ctx->ci2[i], ctx->ci2[i], ri);
+        element_pow_zn(ctx->ci2[i], ctx->ci2[i], tmp_r1);
         element_invert(ctx->ci2[i], ctx->ci2[i]);
         // c_i_3 = g1^{ri}
         element_init_G1(ctx->ci3[i], pp.pairing);
-        element_pow_zn(ctx->ci3[i], pp.g1, ri);
+        element_pow_zn(ctx->ci3[i], pp.g1, tmp_r1);
     }
-    // std::cout << "lusm9: Scheme Encrypt Done.\n";
-
-    // Clear temporary elements
-    element_clear(tmp);
-    element_clear(s);
-    element_clear(_rhoi);
-    element_clear(ri);
 }
 
 void lusm9::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *ptx) {
@@ -206,8 +167,6 @@ void lusm9::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext 
     element_init_GT(tmp_gt1, pp.pairing);
     element_init_GT(tmp_gt2, pp.pairing);
     element_init_GT(tmp_gt3, pp.pairing);
-
-    // std::cout << "lusm9: Decrypt.\n";
     // attributes to omega
     auto omega = (ctx->lsss_policy)->retriveOmega(A->attrs);
     // e(C_prime, K)
@@ -233,10 +192,6 @@ void lusm9::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext 
     element_invert(tmp_nemu, tmp_nemu);
     element_init_GT(ptx->message, pp.pairing);
     element_mul(ptx->message, tmp_nemu, ctx->c_m);
-
-    // std::cout << "lusm9: Scheme Decrypt Done.\n";
-
-    // Clear temporary elements
     element_clear(tmp_nemu);
     element_clear(tmp_deno);
     element_clear(tmp_gt1);
@@ -245,7 +200,6 @@ void lusm9::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext 
 }
 
 lusm9::~lusm9() {
-    // Clear elements in the pairing parameters
     element_clear(pp.g1);
     element_clear(pp.g2);
     element_clear(pp.u);
@@ -255,6 +209,9 @@ lusm9::~lusm9() {
     element_clear(pp.g_pub);
     element_clear(pp.nu);
     element_clear(msk.alpha);
-    element_clear(HN);
+    element_clear(tmp_2);
+    element_clear(tmp_r1);
+    element_clear(tmp_r2);
+    element_clear(tmp_hn_alpha);
 }
 } // namespace crypto
