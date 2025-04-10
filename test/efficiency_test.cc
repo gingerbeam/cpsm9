@@ -14,9 +14,8 @@ using namespace crypto;
 FILE *out = NULL; const bool out_file = true, visiable = false;
 int turns = 0, turns_setup = 1, turns_keygen = 1, turns_enc = 1, turns_dec = 1, n = -1, rev_G1G2;
 std::chrono::_V2::system_clock::time_point ts, te;
-std::vector<std::string> attrs = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"}; std::string policy = "(A and B and C) and (D or E or F) and (G and H and (I or J or K or L)) and M and N and O";
-// std::vector<std::string> attrs = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}; std::string policy = "(A and B and C) and (D or E or F) and (G and H and (I or J or K or L))";
-// std::vector<std::string> attrs = {"A", "B", "C"}; std::string policy = "A and B and C";
+// std::vector<std::string> attrs = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}; std::string policy = "(A and B and C) and (D or E or F) and (G and H and (I or J or K or L))";A&(DDDD|(BB&CCC))
+std::vector<std::string> attrs = {"A", "B", "C", "D", "E", "F", "G", "H", "I"}; std::string policy = "A and B or C and D and E and F or G and H and I";
 CurveParams curve;
 
 void w11_test(std::string &param) {
@@ -207,6 +206,45 @@ void sm9_curve_test() {
     shi19_test(curve.sm9_param);
 }
 
+void test_hash(std::string &m, element_t &res) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    const char *bytes = m.data();
+    SHA256_Update(&sha256, bytes, m.size());
+    SHA256_Final(hash, &sha256);
+    element_from_hash(res, hash, SHA256_DIGEST_LENGTH);
+}
+void hash_test() {
+    pbc_param_t par;
+    pbc_param_init_set_str(par, curve.a_param.c_str());
+    pairing_t pairing;
+    pairing_init_pbc_param(pairing, par);
+    std::string m = "test";
+    element_t eg;
+    element_init_G2(eg, pairing);
+    element_t er;
+    element_init_Zr(er, pairing);
+    
+    double total_duration = 0;
+    for (int _ = 0; _ < 10; _++) {
+        ts = std::chrono::high_resolution_clock::now();
+        test_hash(m, eg);
+        te = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(te - ts).count(); total_duration += duration;
+    }
+    fprintf(out, "hash to group time: %lf ns.\n", total_duration / 10);
+
+    total_duration = 0;
+    for (int _ = 0; _ < 10; _++) {
+        ts = std::chrono::high_resolution_clock::now();
+        test_hash(m, er);
+        te = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(te - ts).count(); total_duration += duration;
+    }
+    fprintf(out, "hahs to Zr time: %lf ns.\n", total_duration / 10);
+}
+
 int main(int argc, char *argv[]) { // curve, turn, function, if_swap
     if(argc < 4) {
         printf("usage: %s [a|sm9] {total_turns} [setup|keygen|enc|dec|all] [0|1]\n", argv[0]);
@@ -224,6 +262,8 @@ int main(int argc, char *argv[]) { // curve, turn, function, if_swap
     } else return 0;
 
     out = fopen("tmp.txt", "w"); fflush(out);
+
+    // hash_test();
 
     if(strcmp(argv[1], "a") == 0) a_curve_test();
     else if(strcmp(argv[1], "sm9") == 0) sm9_curve_test();

@@ -92,8 +92,10 @@ void rw13::Keygen(attribute_set *A, secretkey *sk) {
         
         sk->kx3.insert({a, ka3});
     }
+    // Clear temporary elements
     element_clear(r);
-    // std::cout << "RW13: Scheme Keygen Done.\n";
+    element_clear(ra);
+    element_clear(_a);
 }
 
 void rw13::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
@@ -118,9 +120,9 @@ void rw13::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
     auto lambda = ctx->lsss_policy->share(&s);
     element_t _rhoi;
     element_init_Zr(_rhoi, pp.pairing);
+    element_t ti;
+    element_init_Zr(ti, pp.pairing);
     for (int i = 0; i < ctx->lsss_policy->get_l(); i++) {
-        element_t ti;
-        element_init_Zr(ti, pp.pairing);
         element_random(ti);
         // c_i_1 = w^{lambda_i} v^{ti}
         element_init_G1(ctx->ci1[i], pp.pairing);
@@ -139,8 +141,10 @@ void rw13::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
         element_pow_zn(ctx->ci2[i], ctx->ci2[i], ti);
         element_invert(ctx->ci2[i], ctx->ci2[i]);
     }
+    // Clear temporary elements
     element_clear(s);
-    // std::cout << "RW13: Scheme Encrypt Done.\n";
+    element_clear(_rhoi);
+    element_clear(ti);
 }
 
 void rw13::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *ptx) {
@@ -181,16 +185,23 @@ void rw13::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *
     element_invert(tmp_nemu, tmp_nemu);
     element_init_GT(ptx->message, pp.pairing);
     element_mul(ptx->message, tmp_nemu, ctx->c_m);
-    // clear temporary element_t
+    // Clear temporary elements
     element_clear(tmp_nemu);
     element_clear(tmp_deno);
     element_clear(tmp_gt1);
     element_clear(tmp_gt2);
     element_clear(tmp_gt3);
-    // std::cout << "RW13: Scheme Decrypt Done.\n";
 }
 
 rw13::~rw13() {
+    // Clear elements in the pairing parameters
+    element_clear(pp.g);
+    element_clear(pp.u);
+    element_clear(pp.h);
+    element_clear(pp.w);
+    element_clear(pp.v);
+    element_clear(pp.nu);
+    element_clear(msk.alpha);
     element_clear(tmp);
 }
 

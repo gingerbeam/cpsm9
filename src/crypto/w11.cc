@@ -98,8 +98,8 @@ void w11::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
         element_init_G1(ctx->d[i], pp.pairing);
         element_pow_zn(ctx->d[i], pp.g, ri);
     }
+    // Clear temporary elements
     element_clear(s);
-    // std::cout << "Waters11: Scheme Encrypt Done.\n";
 }
 
 void w11::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *ptx) {
@@ -133,7 +133,7 @@ void w11::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *p
     element_invert(tmp_nemu, tmp_nemu);
     element_init_GT(ptx->message, pp.pairing);
     element_mul(ptx->message, tmp_nemu, ctx->c_m);
-    // element_clear
+    // Clear temporary elements
     element_clear(tmp_nemu);
     element_clear(tmp_deno);
     element_clear(tmp_gt1);
@@ -142,6 +142,11 @@ void w11::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *p
 }
 
 w11::~w11() {
+    // Clear elements in the pairing parameters
+    element_clear(pp.g);
+    element_clear(pp.ga);
+    element_clear(pp.nu);
+    element_clear(msk.alpha);
     element_clear(tmp);
 }
 

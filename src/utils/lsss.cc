@@ -28,7 +28,8 @@ int ExprParser::traverse(int nodeIdx, int c, std::vector<int> &pVec) {
         if (node.op_type == 1) { // OR gate
             return std::max(traverse(node.left, c, pVec), traverse(node.right, c, pVec));
         } else if (node.op_type == 0) { // AND gate
-            std::vector<int> lVec(pVec);
+            // std::vector<int> lVec(pVec);
+            std::vector<int> lVec = pVec;
             lVec.push_back(1);
             std::vector<int> rVec(0, pVec.size());
             rVec.push_back(-1);
@@ -136,6 +137,14 @@ LSSS::LSSS(pairing_t *bp, std::string str) {
 }
 
 LSSS::~LSSS() {
+    // Clear policy matrix
+    for (int i = 0; i < l; ++i) {
+        for (int j = 0; j < n; ++j) {
+            element_clear(*(policy.M[i][j]));
+            delete policy.M[i][j];
+        }
+    }
+    delete parser;
 }
 
 void LSSS::genLSSSPair() {
@@ -179,6 +188,14 @@ std::vector<element_t*> LSSS::share(element_t *secret) {
             element_add((*shares[i]), (*shares[i]), tmp);
         }
     }
+
+    // Clear temporary objects
+    element_clear(tmp);
+    for (int i = 0; i < n; ++i) {
+        element_clear(*(vec[i]));
+        delete vec[i];
+    }
+
     return shares;
 }
 
@@ -268,8 +285,16 @@ void LSSS::solve(int row_n, int col_n, std::vector<element_t*> &omega) {
     }
     // std::cout << "DEBUG probe solve - special solution - OK\n";
 
-    // element_clear(tmp);
-    // return x;
+    // Clean up augmented matrix
+    for (int i = 0; i < row_n; ++i) {
+        for (int j = 0; j <= col_n; ++j) {
+            element_clear(*(aug[i][j]));
+            delete aug[i][j];
+        }
+    }
+
+    element_clear(tmp);
+    element_clear(pivot_inv);
 }
 
 void LSSS::reconstruct(std::vector<std::string> aSet, std::vector<element_t*> shares, element_t *result) {
@@ -301,6 +326,14 @@ void LSSS::reconstruct(std::vector<std::string> aSet, std::vector<element_t*> sh
         element_mul(tmp, *(shares[row_mapping[i]]), *(omega[i]));
         element_add(*result, *result, tmp);
     }
+
+    // Clean up omega elements
+    for (int i = 0; i < S.size(); ++i) {
+        element_clear(*(omega[i]));
+        delete omega[i];
+    }
+
+    element_clear(tmp);
 }
 
 std::unordered_map<int, element_t*> LSSS::retriveOmega(std::vector<std::string> aSet) {
@@ -327,6 +360,8 @@ std::unordered_map<int, element_t*> LSSS::retriveOmega(std::vector<std::string> 
         omega_map[S[i]] = (omega[i]);
         // omega_map[parser->itoa_map[parser->rtoi_map[row_mapping[i]]]] = (omega[i]);
     }
+
+    // Note: The caller is responsible for cleaning up the returned omega_map elements
     return omega_map;
 }
 

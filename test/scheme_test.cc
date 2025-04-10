@@ -32,6 +32,25 @@ TEST(Waters11Test, RandomizeTest) {
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
 }
 
+TEST(Waters11Test, AsymmetricTest) {
+    CurveParams curve;
+    std::vector<std::string> attrs = {"A", "B", "C"};
+    std::string policy = "A and B and C";
+    crypto::w11 scheme(curve.sm9_param, attrs);
+    crypto::w11::attribute_set A;
+    A.attrs = attrs;
+    crypto::w11::secretkey sk;
+    scheme.Keygen(&A, &sk);
+    crypto::w11::plaintext ptx; // wild ptr!!!
+    // scheme.Encaps(42, &ptx);
+    scheme.RandomEncaps(&ptx);
+    crypto::w11::ciphertext ctx;
+    scheme.Encrypt(ptx, policy, &ctx);
+    crypto::w11::plaintext res;
+    scheme.Decrypt(&ctx, &A, &sk, &res);
+    EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+}
+
 TEST(RW13Test, RandomizeTest) {
     CurveParams curve;
     std::vector<std::string> attrs = {"A", "B", "C"};
@@ -52,26 +71,27 @@ TEST(RW13Test, RandomizeTest) {
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
 }
 
-TEST(susm9Test, RandomizeTest) {
-    CurveParams curve;
-    std::vector<std::string> attrs = {"A", "B", "C"};
-    std::string policy = "A and B and C";
-    crypto::susm9 scheme(curve.sm9_param, attrs);
-    crypto::susm9::attribute_set A;
-    A.attrs = attrs;
-    crypto::susm9::secretkey sk;
-    scheme.Keygen(&A, &sk);
-    crypto::susm9::plaintext ptx; // wild ptr!!!
-    // scheme.Encaps(42, &ptx);
-    scheme.RandomEncaps(&ptx);
-    crypto::susm9::ciphertext ctx;
-    scheme.Encrypt(ptx, policy, &ctx);
-    crypto::susm9::plaintext res;
-    scheme.Decrypt(&ctx, &A, &sk, &res);
-    EXPECT_TRUE(!element_cmp(res.message, ptx.message));
-}
+// TEST(RW13Test, AsymmetricTest) {
+//     CurveParams curve;
+//     std::vector<std::string> attrs = {"A", "B", "C"};
+//     std::string policy = "A and B and C";
+//     // crypto::rw13 scheme(curve.sm9_param, attrs);
+//     crypto::rw13 scheme(curve.a_param);
+//     crypto::rw13::attribute_set A;
+//     A.attrs = attrs;
+//     crypto::rw13::secretkey sk;
+//     scheme.Keygen(&A, &sk);
+//     crypto::rw13::plaintext ptx; // wild ptr!!!
+//     // scheme.Encaps(42, &ptx);
+//     scheme.RandomEncaps(&ptx);
+//     crypto::rw13::ciphertext ctx;
+//     scheme.Encrypt(ptx, policy, &ctx);
+//     crypto::rw13::plaintext res;
+//     scheme.Decrypt(&ctx, &A, &sk, &res);
+//     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+// }
 
-TEST(susm9Test, SymmetricTest) {
+TEST(susm9Test, RandomizeTest) {
     CurveParams curve;
     std::vector<std::string> attrs = {"A", "B", "C"};
     std::string policy = "A and B and C";
@@ -90,26 +110,26 @@ TEST(susm9Test, SymmetricTest) {
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
 }
 
-TEST(lusm9Test, RandomizeTest) {
+TEST(susm9Test, AsymmetricTest) {
     CurveParams curve;
     std::vector<std::string> attrs = {"A", "B", "C"};
     std::string policy = "A and B and C";
-    crypto::lusm9 scheme(curve.sm9_param);
-    crypto::lusm9::attribute_set A;
+    crypto::susm9 scheme(curve.sm9_param, attrs);
+    crypto::susm9::attribute_set A;
     A.attrs = attrs;
-    crypto::lusm9::secretkey sk;
+    crypto::susm9::secretkey sk;
     scheme.Keygen(&A, &sk);
-    crypto::lusm9::plaintext ptx; // wild ptr!!!
+    crypto::susm9::plaintext ptx; // wild ptr!!!
     // scheme.Encaps(42, &ptx);
     scheme.RandomEncaps(&ptx);
-    crypto::lusm9::ciphertext ctx;
+    crypto::susm9::ciphertext ctx;
     scheme.Encrypt(ptx, policy, &ctx);
-    crypto::lusm9::plaintext res;
+    crypto::susm9::plaintext res;
     scheme.Decrypt(&ctx, &A, &sk, &res);
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
 }
 
-TEST(lusm9Test, SymmetricTest) {
+TEST(lusm9Test, RandomizeTest) {
     CurveParams curve;
     std::vector<std::string> attrs = {"A", "B", "C"};
     std::string policy = "A and B and C";
@@ -128,9 +148,28 @@ TEST(lusm9Test, SymmetricTest) {
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
 }
 
+TEST(lusm9Test, AsymmetricTest) {
+    CurveParams curve;
+    std::vector<std::string> attrs = {"A", "B", "C"};
+    std::string policy = "A and B and C";
+    crypto::lusm9 scheme(curve.sm9_param);
+    crypto::lusm9::attribute_set A;
+    A.attrs = attrs;
+    crypto::lusm9::secretkey sk;
+    scheme.Keygen(&A, &sk);
+    crypto::lusm9::plaintext ptx; // wild ptr!!!
+    // scheme.Encaps(42, &ptx);
+    scheme.RandomEncaps(&ptx);
+    crypto::lusm9::ciphertext ctx;
+    scheme.Encrypt(ptx, policy, &ctx);
+    crypto::lusm9::plaintext res;
+    scheme.Decrypt(&ctx, &A, &sk, &res);
+    EXPECT_TRUE(!element_cmp(res.message, ptx.message));
+}
+
 TEST(sm9Tetst, RandomizeTest) {
     CurveParams curve;
-    crypto::sm9 scheme(curve.sm9_param);
+    crypto::sm9 scheme(curve.a_param);
     crypto::sm9::secretkey sk;
     std::string id = "test";
     scheme.Keygen(id, &sk);
@@ -144,9 +183,9 @@ TEST(sm9Tetst, RandomizeTest) {
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
 }
 
-TEST(sm9Tetst, SymmmetricTest) {
+TEST(sm9Tetst, AsymmmetricTest) {
     CurveParams curve;
-    crypto::sm9 scheme(curve.a_param);
+    crypto::sm9 scheme(curve.sm9_param);
     crypto::sm9::secretkey sk;
     std::string id = "test";
     scheme.Keygen(id, &sk);
@@ -169,7 +208,7 @@ TEST(Shi19Test, RandomizeTest) {
         {"A", "B", "C"}
     };
     std::vector<std::string> attrs = {"A", "B"};
-    crypto::shi19 scheme(curve.sm9_param, U);
+    crypto::shi19 scheme(curve.a_param, U);
     crypto::shi19::secretkey sk;
     scheme.shi19Keygen(attrs, &sk);
     crypto::shi19::plaintext ptx;
@@ -181,7 +220,7 @@ TEST(Shi19Test, RandomizeTest) {
     EXPECT_TRUE(!element_cmp(res.message, ptx.message));
 }
 
-TEST(Shi19Test, SymmetricTest) {
+TEST(Shi19Test, AsymmetricTest) {
     CurveParams curve;
     std::vector<std::string> U = {"A", "B", "C"};
     std::vector<std::vector<std::string>> access_structure = {
@@ -204,7 +243,7 @@ TEST(Shi19Test, SymmetricTest) {
 
 TEST(ji21Test, RandomizeTest) {
     CurveParams curve;
-    crypto::ji21 scheme(curve.sm9_param);
+    crypto::ji21 scheme(curve.a_param);
     std::vector<std::string> user_attrs = {"A", "B", "C"};
     ji21::ji21Prv* prv = scheme.ji21_keygen(user_attrs);
     std::string policy = "A and B and C";
@@ -217,9 +256,9 @@ TEST(ji21Test, RandomizeTest) {
     EXPECT_TRUE(!element_cmp(result->e, ptx.message));
 }
 
-TEST(ji21Test, SymmetricTest) {
+TEST(ji21Test, AsymmetricTest) {
     CurveParams curve;
-    crypto::ji21 scheme(curve.a_param);
+    crypto::ji21 scheme(curve.sm9_param);
     std::vector<std::string> user_attrs = {"A", "B", "C"};
     ji21::ji21Prv* prv = scheme.ji21_keygen(user_attrs);
     std::string policy = "A and B and C";

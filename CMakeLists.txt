@@ -60,9 +60,9 @@ target_link_libraries(efficiency_test gtest pbc OpenSSL::SSL
         "/lib/x86_64-linux-gnu/libgmpxx.a"
         "/lib/x86_64-linux-gnu/libgmp.a")
 
-# add_executable(lsss_test
-#         test/lsss_test.cc
-#         src/utils/lsss.cc
-#         src/curve/params.cc)
+add_executable(lsss_test
+        test/lsss_test.cc
+        src/utils/lsss.cc
+        src/curve/params.cc)
 
-# target_link_libraries(lsss_test gtest pbc Eigen3::Eigen)
+target_link_libraries(lsss_test gtest pbc)

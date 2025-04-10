@@ -91,6 +91,13 @@ void susm9::Keygen(attribute_set *A, secretkey *sk) {
         sk->kx.insert({a, ka});
     }
     // std::cout << "SUSM9: Scheme Keygen Done.\n";
+
+    // Clear temporary elements
+    element_clear(tmp1);
+    element_clear(tmp2);
+    element_clear(tmp);
+    element_clear(HN_alpha);
+    element_clear(t);
 }
 
 void susm9::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
@@ -133,6 +140,11 @@ void susm9::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
         element_init_G1(ctx->d[i], pp.pairing);
         element_pow_zn(ctx->d[i], pp.g1, ri);
     }
+
+    // Clear temporary elements
+    element_clear(tmp);
+    element_clear(s);
+    element_clear(ri);
 }
 
 void susm9::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *ptx) {
@@ -168,7 +180,22 @@ void susm9::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext 
     element_mul(ptx->message, tmp_nemu, ctx->c_m);
 
     // std::cout << "Waters11: Scheme Decrypt Done.\n";
+
+    // Clear temporary elements
+    element_clear(tmp_nemu);
+    element_clear(tmp_deno);
+    element_clear(tmp_gt1);
+    element_clear(tmp_gt2);
 }
 
-susm9::~susm9() {}
+susm9::~susm9() {
+    // Clear elements in the pairing parameters
+    element_clear(pp.g1);
+    element_clear(pp.g2);
+    element_clear(pp.u);
+    element_clear(pp.g_pub);
+    element_clear(pp.nu);
+    element_clear(msk.alpha);
+    element_clear(pp.gid);
+}
 } // namespace crypto

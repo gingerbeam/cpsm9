@@ -127,6 +127,15 @@ void lusm9::Keygen(attribute_set *A, secretkey *sk) {
         sk->kx2.insert({a, ka2});
     }
     // std::cout << "lusm9: Scheme Keygen Done.\n";
+
+    // Clear temporary elements
+    element_clear(tmp1);
+    element_clear(tmp2);
+    element_clear(tmp);
+    element_clear(HN_alpha);
+    element_clear(t);
+    element_clear(ta);
+    element_clear(_a);
 }
 
 void lusm9::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
@@ -178,6 +187,12 @@ void lusm9::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
         element_pow_zn(ctx->ci3[i], pp.g1, ri);
     }
     // std::cout << "lusm9: Scheme Encrypt Done.\n";
+
+    // Clear temporary elements
+    element_clear(tmp);
+    element_clear(s);
+    element_clear(_rhoi);
+    element_clear(ri);
 }
 
 void lusm9::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *ptx) {
@@ -220,9 +235,26 @@ void lusm9::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext 
     element_mul(ptx->message, tmp_nemu, ctx->c_m);
 
     // std::cout << "lusm9: Scheme Decrypt Done.\n";
+
+    // Clear temporary elements
+    element_clear(tmp_nemu);
+    element_clear(tmp_deno);
+    element_clear(tmp_gt1);
+    element_clear(tmp_gt2);
+    element_clear(tmp_gt3);
 }
 
 lusm9::~lusm9() {
+    // Clear elements in the pairing parameters
+    element_clear(pp.g1);
+    element_clear(pp.g2);
+    element_clear(pp.u);
+    element_clear(pp.v);
+    element_clear(pp.w);
+    element_clear(pp.h);
+    element_clear(pp.g_pub);
+    element_clear(pp.nu);
+    element_clear(msk.alpha);
+    element_clear(HN);
 }
-
 } // namespace crypto
