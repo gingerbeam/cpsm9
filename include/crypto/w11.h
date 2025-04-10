@@ -19,11 +19,13 @@ private:
     } msk;
 public:
     // temporary element_t
-    element_t tmp; // G1
+    element_t tmp1; // G1
+    element_t tmp2; // G2
 
     struct public_parameter {
         pairing_t pairing;
-        element_t g;
+        element_t g1;
+        element_t g2;
         element_t nu;
         element_t ga;
         std::unordered_map<std::string, element_t*> h;
