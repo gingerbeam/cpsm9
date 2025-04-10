@@ -21,17 +21,19 @@ private:
     void HtoZ(std::string &m, element_t &res);
 public:
     // temporary element_t
-    element_t tmp;
+    element_t tmp1;
+    element_t tmp2;
     
     // pp = {BP, g, u, h, w, v, nu}
     struct public_parameter {
         pairing_t pairing;
-        element_t g;
+        element_t g1;
+        element_t g2;
         element_t u;
         element_t h;
         element_t w;
         element_t v;
-        element_t nu; // nu = e(g,g)^alpha
+        element_t nu; // nu = e(g1,g2)^alpha
     } pp;
 
     struct attribute_set {

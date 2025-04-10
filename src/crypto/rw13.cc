@@ -18,55 +18,55 @@ void rw13::HtoZ(std::string &m, element_t &res) {
 }
 
 rw13::rw13(std::string &param) {
-    // std::cout << "RW13: Scheme Setup.\n";
     // init pairing
     pbc_param_t par;
     pbc_param_init_set_str(par, param.c_str());
     pairing_init_pbc_param(pp.pairing, par);
     // init element_t
-    element_init_G1(tmp, pp.pairing);
+    element_init_G1(tmp1, pp.pairing);
+    element_init_G2(tmp2, pp.pairing);
     // alpha
     element_init_Zr(msk.alpha, pp.pairing);
     element_random(msk.alpha);
     // g
-    element_init_G1(pp.g, pp.pairing);
-    element_random(pp.g);
+    element_init_G1(pp.g1, pp.pairing);
+    element_random(pp.g1);
+    element_init_G2(pp.g2, pp.pairing);
+    element_random(pp.g2);
     // u
-    element_init_G1(pp.u, pp.pairing);
+    element_init_G2(pp.u, pp.pairing);
     element_random(pp.u);
     // h
-    element_init_G1(pp.h, pp.pairing);
+    element_init_G2(pp.h, pp.pairing);
     element_random(pp.h);
     // w
-    element_init_G1(pp.w, pp.pairing);
+    element_init_G2(pp.w, pp.pairing);
     element_random(pp.w);
     // v
-    element_init_G1(pp.v, pp.pairing);
+    element_init_G2(pp.v, pp.pairing);
     element_random(pp.v);
     // nu
     element_init_GT(pp.nu, pp.pairing);
-    element_pairing(pp.nu, pp.g, pp.g);
+    element_pairing(pp.nu, pp.g1, pp.g2);
     element_pow_zn(pp.nu, pp.nu, msk.alpha);
-    // std::cout << "RW13: Scheme Setup Done.\n";
 }
 
 void rw13::Keygen(attribute_set *A, secretkey *sk) {
-    // std::cout << "RW13: Keygen.\n";
     // randomness
     element_t r;
     element_init_Zr(r, pp.pairing);
     element_random(r);
-    // K_0 = g^alpha w^r
-    element_init_G1(sk->k0, pp.pairing);
-    element_pow_zn(sk->k0, pp.g, msk.alpha);
-    element_pow_zn(tmp, pp.w, r);
-    element_mul(sk->k0, sk->k0, tmp);
-    // K_1 = g^r
+    // K_0 = g2^alpha w^r
+    element_init_G2(sk->k0, pp.pairing);
+    element_pow_zn(sk->k0, pp.g2, msk.alpha);
+    element_pow_zn(tmp2, pp.w, r);
+    element_mul(sk->k0, sk->k0, tmp2);
+    // K_1 = g1^r
     element_init_G1(sk->k1, pp.pairing);
-    element_pow_zn(sk->k1, pp.g, r);
+    element_pow_zn(sk->k1, pp.g1, r);
     // v^{-r}
-    element_pow_zn(tmp, pp.v, r);
-    element_invert(tmp, tmp);
+    element_pow_zn(tmp2, pp.v, r);
+    element_invert(tmp2, tmp2);
     // for all a in attrs, Kx = h_x^t
     element_t ra;
     element_init_Zr(ra, pp.pairing);
@@ -78,21 +78,20 @@ void rw13::Keygen(attribute_set *A, secretkey *sk) {
         // ka2
         element_t *ka2 = (element_t *)(new element_t);
         element_init_G1(*ka2, pp.pairing);
-        element_pow_zn(*ka2, pp.g, ra);
+        element_pow_zn(*ka2, pp.g1, ra);
         sk->kx2.insert({a, ka2});
         // ka3
         element_t *ka3 = (element_t *)(new element_t);
-        element_init_G1(*ka3, pp.pairing);
+        element_init_G2(*ka3, pp.pairing);
         // A_tao as element_t
         HtoZ(a, _a);
         element_pow_zn(*ka3, pp.u, _a);
         element_mul(*ka3, *ka3, pp.h);
         element_pow_zn(*ka3, *ka3, ra);
-        element_mul(*ka3, *ka3, tmp);
+        element_mul(*ka3, *ka3, tmp2);
         
         sk->kx3.insert({a, ka3});
     }
-    // Clear temporary elements
     element_clear(r);
     element_clear(ra);
     element_clear(_a);
@@ -110,9 +109,9 @@ void rw13::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
     element_init_GT(ctx->c_m, pp.pairing);
     element_pow_zn(ctx->c_m, pp.nu, s);
     element_mul(ctx->c_m, ctx->c_m, ptx.message);
-    // c_0 = g^s
+    // c_0 = g1^s
     element_init_G1(ctx->c_0, pp.pairing);
-    element_pow_zn(ctx->c_0, pp.g, s);
+    element_pow_zn(ctx->c_0, pp.g1, s);
     // c_i_1, c_i_2, c_i_3
     ctx->ci1 = std::vector<element_t>(ctx->lsss_policy->get_l());
     ctx->ci2 = std::vector<element_t>(ctx->lsss_policy->get_l());
@@ -125,15 +124,15 @@ void rw13::Encrypt(plaintext ptx, std::string policy, ciphertext *ctx) {
     for (int i = 0; i < ctx->lsss_policy->get_l(); i++) {
         element_random(ti);
         // c_i_1 = w^{lambda_i} v^{ti}
-        element_init_G1(ctx->ci1[i], pp.pairing);
+        element_init_G2(ctx->ci1[i], pp.pairing);
         element_pow_zn(ctx->ci1[i], pp.w, *(lambda[i]));
-        element_pow_zn(tmp, pp.v, ti);
-        element_mul(ctx->ci1[i], ctx->ci1[i], tmp);
+        element_pow_zn(tmp2, pp.v, ti);
+        element_mul(ctx->ci1[i], ctx->ci1[i], tmp2);
         // c_i_3 = g^{ti}
         element_init_G1(ctx->ci3[i], pp.pairing);
-        element_pow_zn(ctx->ci3[i], pp.g, ti);
+        element_pow_zn(ctx->ci3[i], pp.g1, ti);
         // c_i_2 = (u^{rho(i)}h)^{-ti}
-        element_init_G1(ctx->ci2[i], pp.pairing);
+        element_init_G2(ctx->ci2[i], pp.pairing);
         std::string rhoi = ctx->lsss_policy->rho_map(i);
         HtoZ(rhoi, _rhoi);
         element_pow_zn(ctx->ci2[i], pp.u, _rhoi);
@@ -170,9 +169,9 @@ void rw13::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *
     element_set1(tmp_deno);
     for (auto row : I) {
         // e(C_i_1, K_1)
-        element_pairing(tmp_gt1, ctx->ci1[row], sk->k1);
+        element_pairing(tmp_gt1, sk->k1, ctx->ci1[row]);
         // e(C_i_2, K_rho(i)_2)
-        element_pairing(tmp_gt2, ctx->ci2[row], *(sk->kx2[ctx->lsss_policy->rho_map(row)]));
+        element_pairing(tmp_gt2, *(sk->kx2[ctx->lsss_policy->rho_map(row)]), ctx->ci2[row]);
         // e(C_i_3, K_rho(i)_3)
         element_pairing(tmp_gt3, ctx->ci3[row], *(sk->kx3[ctx->lsss_policy->rho_map(row)]));
         element_mul(tmp_gt1, tmp_gt1, tmp_gt2);
@@ -195,14 +194,16 @@ void rw13::Decrypt(ciphertext *ctx, attribute_set *A, secretkey *sk, plaintext *
 
 rw13::~rw13() {
     // Clear elements in the pairing parameters
-    element_clear(pp.g);
+    element_clear(pp.g1);
+    element_clear(pp.g2);
     element_clear(pp.u);
     element_clear(pp.h);
     element_clear(pp.w);
     element_clear(pp.v);
     element_clear(pp.nu);
     element_clear(msk.alpha);
-    element_clear(tmp);
+    element_clear(tmp1);
+    element_clear(tmp2);
 }
 
 } // namespace crypto
