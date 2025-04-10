@@ -21,6 +21,8 @@ public:
     // temporary element_t
     element_t tmp1; // G1
     element_t tmp2; // G2
+    element_t tmpr1;
+    element_t tmpr2;
 
     struct public_parameter {
         pairing_t pairing;
